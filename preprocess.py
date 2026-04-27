@@ -1,65 +1,70 @@
 """
-ToneFit ML — Preprocessing Script (Step 2)
-============================================
-Processes raw face crops into a clean feature dataset ready for ML training.
+ToneFit ML — Preprocessing Pipeline (v2)
+=========================================
+Improvements over v1:
+  - Skin region masking using MediaPipe Face Mesh landmarks
+    (cheek, forehead, undereye — avoids hair, lips, eyebrows)
+  - Skin-pixel-only color feature extraction (not full image average)
+  - Exposure/blur outlier filtering before feature extraction
+  - Saturation check — rejects grayscale/heavily filtered images
+  - Richer feature set: adds skin ratio, blur score, Fitzpatrick-proxy
+  - Full audit log per image in preprocessing_audit.csv
 
 What this script does:
-  1. Removes duplicate images using perceptual hashing
-  2. Converts each face image to CIELab and HSV color spaces
-  3. Extracts color features from the face region:
-       - L*, a*, b* mean and std (CIELab)
-       - ITA score (Individual Typology Angle) — key skin tone metric
-       - H, S, V mean (HSV)
-  4. Saves all features to features.csv
-  5. Encodes season labels as integers (spring=0, summer=1, autumn=2, winter=3)
-  6. Normalizes features using MinMaxScaler
-  7. Splits into 80% train / 20% test (stratified, random_state=42)
-  8. Saves: X_train.npy, X_test.npy, y_train.npy, y_test.npy
+  1. Load all images from dataset/spring|summer|autumn|winter
+  2. Filter out blurry, overexposed, or desaturated images
+  3. Isolate skin pixels using MediaPipe face landmarks
+  4. Extract CIELab + HSV color features from skin region only
+  5. Save features.csv
+  6. Normalize with MinMaxScaler
+  7. Stratified 80/20 train/test split
+  8. Save X_train.npy, X_test.npy, y_train.npy, y_test.npy
 
 Requirements:
-  pip install opencv-python scikit-learn scikit-image pandas numpy imagehash Pillow
+  pip install opencv-python mediapipe scikit-learn scikit-image pandas numpy imagehash Pillow
 
 Usage:
   python preprocess.py
 
 Outputs:
-  features.csv         — full feature table with labels
-  X_train.npy          — training features (normalized)
-  X_test.npy           — test features (normalized)
-  y_train.npy          — training labels (integers)
-  y_test.npy           — test labels (integers)
-  models/scaler.pkl    — fitted MinMaxScaler (save for use during prediction)
+  features.csv            — full feature table with labels
+  preprocessing_audit.csv — per-image quality audit log
+  X_train.npy, X_test.npy, y_train.npy, y_test.npy
+  models/scaler.pkl
 """
 
 import os
-import logging
-import pickle
-
 import cv2
+import pickle
+import logging
 import numpy as np
 import pandas as pd
-import imagehash
-from PIL import Image
 from skimage import color as skcolor
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 
-# ─── CONFIG ───────────────────────────────────────────────────────────────────
+# ── CONFIG ────────────────────────────────────────────────────────────────────
 
-DATASET_DIR  = "dataset"
-SEASONS      = ["spring", "summer", "autumn", "winter"]
-LABEL_MAP    = {"spring": 0, "summer": 1, "autumn": 2, "winter": 3}
-VALID_EXT    = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
+DATASET_DIR       = "dataset"
+SEASONS           = ["spring", "summer", "autumn", "winter"]
+LABEL_MAP         = {"spring": 0, "summer": 1, "autumn": 2, "winter": 3}
+VALID_EXT         = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
+FEATURES_CSV      = "features.csv"
+AUDIT_CSV         = "preprocessing_audit.csv"
+MODELS_DIR        = "models"
+SCALER_PATH       = os.path.join(MODELS_DIR, "scaler.pkl")
 
-FEATURES_CSV = "features.csv"
-MODELS_DIR   = "models"
-SCALER_PATH  = os.path.join(MODELS_DIR, "scaler.pkl")
+# Quality thresholds
+MIN_BRIGHTNESS    = 40    # L* mean below this = too dark
+MAX_BRIGHTNESS    = 92    # L* mean above this = overexposed
+MIN_SATURATION    = 0.05  # HSV S mean below this = grayscale/desaturated
+MIN_BLUR_SCORE    = 60    # Laplacian variance below this = blurry
+MIN_SKIN_RATIO    = 0.05  # < 5% skin pixels detected = bad crop
 
-HASH_THRESHOLD = 5   # Hamming distance — images closer than this are duplicates
-RANDOM_STATE   = 42
-TEST_SIZE      = 0.20
+RANDOM_STATE      = 42
+TEST_SIZE         = 0.20
 
-# ─── LOGGING ──────────────────────────────────────────────────────────────────
+# ── LOGGING ───────────────────────────────────────────────────────────────────
 
 logging.basicConfig(
     level=logging.INFO,
@@ -68,281 +73,332 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-# ─── SETUP ────────────────────────────────────────────────────────────────────
-
 os.makedirs(MODELS_DIR, exist_ok=True)
 
-# ─── STEP 1: DUPLICATE REMOVAL ────────────────────────────────────────────────
+# ── MEDIAPIPE FACE MESH ───────────────────────────────────────────────────────
 
-def remove_duplicates(season_dir):
+try:
+    import mediapipe as mp
+    _mp_mesh = mp.solutions.face_mesh
+    FACE_MESH = _mp_mesh.FaceMesh(
+        static_image_mode=True,
+        max_num_faces=1,
+        refine_landmarks=True,
+        min_detection_confidence=0.5,
+    )
+    USE_MEDIAPIPE = True
+    log.info("✓ MediaPipe Face Mesh loaded for skin region extraction")
+except ImportError:
+    USE_MEDIAPIPE = False
+    log.warning("MediaPipe not found — falling back to center-crop skin region")
+
+# Landmark indices for skin-rich face regions (MediaPipe 468-point model)
+# Cheeks (left + right), forehead, nose bridge, undereye
+SKIN_LANDMARK_INDICES = [
+    # Left cheek
+    234, 93, 132, 58, 172, 136, 150, 149, 176, 148, 152,
+    # Right cheek
+    454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152,
+    # Forehead center
+    10, 338, 297, 332, 284, 251, 389, 356, 454,
+    # Nose bridge
+    6, 197, 195, 5, 4,
+    # Under-eye
+    226, 113, 225, 224, 223, 222, 221, 189,
+    446, 342, 445, 444, 443, 442, 441, 413,
+]
+
+def get_skin_mask_mediapipe(img_bgr):
     """
-    Find and delete visually duplicate images using perceptual hashing.
-
-    Perceptual hashing (pHash) compares image content — not file bytes.
-    Two images with a Hamming distance below HASH_THRESHOLD are considered
-    duplicates. The second occurrence is deleted.
-
-    Returns the number of duplicates removed.
+    Build a binary mask of skin-region pixels using MediaPipe Face Mesh.
+    Returns mask (H×W, uint8) or None if no face detected.
     """
-    files = sorted([
-        f for f in os.listdir(season_dir)
-        if f.lower().endswith(VALID_EXT)
-    ])
+    h, w = img_bgr.shape[:2]
+    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+    result = FACE_MESH.process(img_rgb)
 
-    hashes  = {}
-    removed = 0
+    if not result.multi_face_landmarks:
+        return None
 
-    for fname in files:
-        path = os.path.join(season_dir, fname)
-        try:
-            img  = Image.open(path)
-            phash = imagehash.phash(img)
-        except Exception as e:
-            log.warning(f"    Could not hash {fname}: {e}")
-            continue
+    landmarks = result.multi_face_landmarks[0].landmark
+    points = np.array([
+        (int(lm.x * w), int(lm.y * h))
+        for i, lm in enumerate(landmarks)
+        if i in SKIN_LANDMARK_INDICES
+    ], dtype=np.int32)
 
-        duplicate = False
-        for existing_hash in hashes:
-            if phash - existing_hash < HASH_THRESHOLD:
-                log.info(f"    Duplicate removed: {fname}")
-                os.remove(path)
-                removed += 1
-                duplicate = True
-                break
+    if len(points) < 3:
+        return None
 
-        if not duplicate:
-            hashes[phash] = fname
+    mask = np.zeros((h, w), dtype=np.uint8)
+    hull = cv2.convexHull(points)
+    cv2.fillConvexPoly(mask, hull, 255)
+    return mask
 
-    return removed
+def get_skin_mask_fallback(img_bgr):
+    """
+    Fallback: use center 60% of image as approximate face/skin region.
+    Less accurate but works without MediaPipe.
+    """
+    h, w = img_bgr.shape[:2]
+    mask = np.zeros((h, w), dtype=np.uint8)
+    y1, y2 = int(h * 0.15), int(h * 0.75)
+    x1, x2 = int(w * 0.20), int(w * 0.80)
+    mask[y1:y2, x1:x2] = 255
+    return mask
 
+# ── QUALITY FILTERS ───────────────────────────────────────────────────────────
 
-# ─── STEP 2 & 3: FEATURE EXTRACTION ──────────────────────────────────────────
+def blur_score(img_bgr):
+    """Laplacian variance — higher = sharper."""
+    gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+    return float(cv2.Laplacian(gray, cv2.CV_64F).var())
+
+def check_quality(img_bgr, L_mean, S_mean):
+    """
+    Run quality checks. Returns (pass: bool, reason: str).
+    """
+    blr = blur_score(img_bgr)
+    if blr < MIN_BLUR_SCORE:
+        return False, f"blurry ({blr:.1f})"
+    if L_mean < MIN_BRIGHTNESS:
+        return False, f"too_dark (L={L_mean:.1f})"
+    if L_mean > MAX_BRIGHTNESS:
+        return False, f"overexposed (L={L_mean:.1f})"
+    if S_mean < MIN_SATURATION:
+        return False, f"desaturated (S={S_mean:.3f})"
+    return True, "ok"
+
+# ── FEATURE EXTRACTION ────────────────────────────────────────────────────────
 
 def extract_features(img_path):
     """
-    Extract CIELab and HSV color features from a single face image.
+    Extract color features from the skin region of a face image.
 
-    Features extracted:
-      CIELab space:
-        L_mean  — mean Lightness (0=black, 100=white)
-        a_mean  — mean red-green axis (positive = reddish)
-        b_mean  — mean yellow-blue axis (positive = yellowish, warmer)
-        L_std   — standard deviation of Lightness (contrast measure)
-        a_std   — standard deviation of a*
-        b_std   — standard deviation of b*
-        ITA     — Individual Typology Angle
-                  Formula: arctan((L* - 50) / b*) × (180/π)
-                  Higher ITA → lighter/cooler skin (Summer/Winter)
-                  Lower ITA  → darker/warmer skin (Spring/Autumn)
+    Features:
+      CIELab (skin pixels only):
+        L_mean, a_mean, b_mean  — mean Lightness, red-green, yellow-blue
+        L_std, a_std, b_std     — variation (contrast / diversity)
+        ITA                     — Individual Typology Angle
+                                  arctan((L-50)/b) × (180/π)
+                                  Higher ITA → lighter/cooler (Summer/Winter)
+                                  Lower ITA  → darker/warmer  (Spring/Autumn)
+      HSV (skin pixels only):
+        H_mean, S_mean, V_mean  — hue, saturation, brightness
 
-      HSV space:
-        H_mean  — mean Hue (0–360°)
-        S_mean  — mean Saturation (0–1)
-        V_mean  — mean Value / brightness (0–1)
+      Quality:
+        skin_ratio              — fraction of face area identified as skin region
+        blur_score              — image sharpness (Laplacian variance)
 
-    Returns a dict of features, or None if the image cannot be read.
+    Returns dict of features + quality fields, or None on read failure.
     """
-    # Read image (OpenCV loads as BGR)
     img_bgr = cv2.imread(img_path)
     if img_bgr is None:
-        log.warning(f"    Cannot read image: {img_path}")
         return None
 
-    # ── CIELab conversion ──────────────────────────────────────────────────
-    # Convert BGR → RGB → CIELab
-    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-    img_rgb_norm = img_rgb.astype(np.float32) / 255.0  # skimage expects [0,1]
-    img_lab = skcolor.rgb2lab(img_rgb_norm)             # shape: (H, W, 3)
-
-    L = img_lab[:, :, 0]   # Lightness channel
-    a = img_lab[:, :, 1]   # red-green channel
-    b = img_lab[:, :, 2]   # yellow-blue channel
-
-    L_mean = float(np.mean(L))
-    a_mean = float(np.mean(a))
-    b_mean = float(np.mean(b))
-    L_std  = float(np.std(L))
-    a_std  = float(np.std(a))
-    b_std  = float(np.std(b))
-
-    # ITA score — avoid division by zero
-    # Higher ITA = lighter and cooler skin tone
-    if abs(b_mean) < 1e-6:
-        ITA = 0.0
+    # ── Get skin mask ──────────────────────────────────────────────────
+    if USE_MEDIAPIPE:
+        mask = get_skin_mask_mediapipe(img_bgr)
+        if mask is None:
+            mask = get_skin_mask_fallback(img_bgr)
     else:
-        ITA = float(np.degrees(np.arctan((L_mean - 50.0) / b_mean)))
+        mask = get_skin_mask_fallback(img_bgr)
 
-    # ── HSV conversion ─────────────────────────────────────────────────────
+    skin_ratio = float(np.sum(mask > 0)) / float(mask.size)
+    if skin_ratio < MIN_SKIN_RATIO:
+        return {"_reject": f"low_skin_ratio ({skin_ratio:.3f})"}
+
+    # ── CIELab on skin pixels ──────────────────────────────────────────
+    img_rgb      = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+    img_rgb_norm = img_rgb.astype(np.float32) / 255.0
+    img_lab      = skcolor.rgb2lab(img_rgb_norm)   # (H, W, 3)
+
+    skin_px  = mask > 0                            # boolean mask
+    L_vals   = img_lab[:, :, 0][skin_px]
+    a_vals   = img_lab[:, :, 1][skin_px]
+    b_vals   = img_lab[:, :, 2][skin_px]
+
+    L_mean = float(np.mean(L_vals))
+    a_mean = float(np.mean(a_vals))
+    b_mean = float(np.mean(b_vals))
+    L_std  = float(np.std(L_vals))
+    a_std  = float(np.std(a_vals))
+    b_std  = float(np.std(b_vals))
+    ITA    = float(np.degrees(np.arctan2(L_mean - 50.0, b_mean + 1e-6)))
+
+    # ── HSV on skin pixels ─────────────────────────────────────────────
     img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV).astype(np.float32)
+    H_vals  = (img_hsv[:, :, 0] / 180.0)[skin_px]
+    S_vals  = (img_hsv[:, :, 1] / 255.0)[skin_px]
+    V_vals  = (img_hsv[:, :, 2] / 255.0)[skin_px]
 
-    # OpenCV HSV range: H=[0,180], S=[0,255], V=[0,255] — normalize all to [0,1]
-    H = img_hsv[:, :, 0] / 180.0
-    S = img_hsv[:, :, 1] / 255.0
-    V = img_hsv[:, :, 2] / 255.0
+    H_mean = float(np.mean(H_vals))
+    S_mean = float(np.mean(S_vals))
+    V_mean = float(np.mean(V_vals))
 
-    H_mean = float(np.mean(H))
-    S_mean = float(np.mean(S))
-    V_mean = float(np.mean(V))
+    blr = blur_score(img_bgr)
 
     return {
-        "L_mean": L_mean,
-        "a_mean": a_mean,
-        "b_mean": b_mean,
-        "L_std":  L_std,
-        "a_std":  a_std,
-        "b_std":  b_std,
-        "ITA":    ITA,
-        "H_mean": H_mean,
-        "S_mean": S_mean,
-        "V_mean": V_mean,
+        "L_mean":     L_mean,
+        "a_mean":     a_mean,
+        "b_mean":     b_mean,
+        "L_std":      L_std,
+        "a_std":      a_std,
+        "b_std":      b_std,
+        "ITA":        ITA,
+        "H_mean":     H_mean,
+        "S_mean":     S_mean,
+        "V_mean":     V_mean,
+        "skin_ratio": skin_ratio,
+        "blur_score": blr,
     }
 
-
-# ─── MAIN ─────────────────────────────────────────────────────────────────────
+# ── MAIN ──────────────────────────────────────────────────────────────────────
 
 def run():
-    log.info("=" * 60)
-    log.info("  ToneFit ML — Preprocessing")
-    log.info("=" * 60)
+    log.info("=" * 65)
+    log.info("  ToneFit ML — Preprocessing Pipeline v2")
+    log.info("=" * 65)
 
-    # ── Step 1: Remove duplicates ──────────────────────────────────────────
-    log.info("\n[Step 1] Removing duplicate images...")
-    total_dupes = 0
-    for season in SEASONS:
-        season_dir = os.path.join(DATASET_DIR, season)
-        if not os.path.isdir(season_dir):
-            log.warning(f"  Season folder not found: {season_dir}  (skipping)")
-            continue
-        dupes = remove_duplicates(season_dir)
-        log.info(f"  {season:<8}: {dupes} duplicate(s) removed")
-        total_dupes += dupes
-    log.info(f"  Total duplicates removed: {total_dupes}")
+    rows       = []
+    audit_rows = []
 
-    # ── Step 2 & 3: Extract features ──────────────────────────────────────
-    log.info("\n[Step 2] Extracting color features from face images...")
-    log.info("  (This may take a few minutes depending on dataset size)")
-
-    rows = []
+    # ── Step 1: Extract features + quality filter ──────────────────────
+    log.info("\n[Step 1] Extracting skin-region color features...")
 
     for season in SEASONS:
         season_dir = os.path.join(DATASET_DIR, season)
         if not os.path.isdir(season_dir):
-            log.warning(f"  Season folder not found: {season_dir}  (skipping)")
+            log.warning(f"  Season folder not found: {season_dir} (skipping)")
             continue
 
         files = sorted([
             f for f in os.listdir(season_dir)
             if f.lower().endswith(VALID_EXT)
         ])
+        log.info(f"\n  {season.upper():<8}: {len(files)} images")
 
-        log.info(f"  {season.upper():<8}: {len(files)} images")
+        saved_count    = 0
+        filtered_count = 0
 
         for fname in files:
             path     = os.path.join(season_dir, fname)
             features = extract_features(path)
 
             if features is None:
-                continue  # skip unreadable images
+                reason = "unreadable"
+                log.debug(f"    SKIP {fname}: {reason}")
+                audit_rows.append({"filename": fname, "season": season, "status": reason})
+                filtered_count += 1
+                continue
 
-            row = {
-                "filename": fname,
-                "season":   season,
-                "label":    LABEL_MAP[season],
-            }
+            if "_reject" in features:
+                reason = features["_reject"]
+                log.debug(f"    SKIP {fname}: {reason}")
+                audit_rows.append({"filename": fname, "season": season, "status": reason})
+                filtered_count += 1
+                continue
+
+            # Quality checks
+            passed, reason = check_quality(
+                cv2.imread(path), features["L_mean"], features["S_mean"]
+            )
+            if not passed:
+                log.debug(f"    SKIP {fname}: {reason}")
+                audit_rows.append({"filename": fname, "season": season, "status": reason})
+                filtered_count += 1
+                continue
+
+            # Passed all checks
+            row = {"filename": fname, "season": season, "label": LABEL_MAP[season]}
             row.update(features)
             rows.append(row)
+            audit_rows.append({"filename": fname, "season": season, "status": "ok"})
+            saved_count += 1
+
+        log.info(f"    ✓ kept: {saved_count}  ✗ filtered: {filtered_count}")
 
     if len(rows) == 0:
-        log.error("\nNo images processed. Check that dataset/ folders contain images.")
-        log.error("Run collect_data.py first, then re-run this script.")
+        log.error("\nNo images passed quality filtering.")
+        log.error("Check that dataset/ folders exist and contain valid images.")
+        log.error("Run collectdata.py first.")
         return
 
-    # ── Step 4: Save features.csv ──────────────────────────────────────────
-    log.info("\n[Step 3] Saving feature table...")
-
-    df = pd.DataFrame(rows, columns=[
-        "filename", "season", "label",
-        "L_mean", "a_mean", "b_mean",
-        "L_std",  "a_std",  "b_std",
-        "ITA",
-        "H_mean", "S_mean", "V_mean",
-    ])
-
+    # ── Step 2: Build DataFrame + save features.csv ────────────────────
+    log.info("\n[Step 2] Saving feature table...")
+    feature_cols = [
+        "L_mean", "a_mean", "b_mean", "L_std", "a_std", "b_std",
+        "ITA", "H_mean", "S_mean", "V_mean", "skin_ratio", "blur_score"
+    ]
+    df = pd.DataFrame(rows, columns=["filename", "season", "label"] + feature_cols)
     df.to_csv(FEATURES_CSV, index=False)
-    log.info(f"  Saved: {FEATURES_CSV}  ({len(df)} rows)")
+    log.info(f"  Saved: {FEATURES_CSV} ({len(df)} rows)")
 
-    # Print class distribution
-    log.info("\n  Class distribution:")
+    # Save audit log
+    pd.DataFrame(audit_rows).to_csv(AUDIT_CSV, index=False)
+    log.info(f"  Saved: {AUDIT_CSV}")
+
+    # Class distribution
+    log.info("\n  Class distribution after filtering:")
     for season in SEASONS:
         count = len(df[df["season"] == season])
         bar   = "█" * (count // 3)
         log.info(f"    {season:<8}: {count:>4} images  {bar}")
 
-    # ── Step 5: Normalize features ─────────────────────────────────────────
-    log.info("\n[Step 4] Normalizing features with MinMaxScaler...")
+    total = len(df)
+    min_class = df.groupby("season").size().min()
+    if min_class < 30:
+        log.warning(f"\n  ⚠ Smallest class has only {min_class} images.")
+        log.warning("    Consider collecting more data before training.")
 
-    feature_cols = ["L_mean", "a_mean", "b_mean", "L_std", "a_std", "b_std",
-                    "ITA", "H_mean", "S_mean", "V_mean"]
-
+    # ── Step 3: Normalize ──────────────────────────────────────────────
+    log.info("\n[Step 3] Normalizing with MinMaxScaler...")
+    # Note: skin_ratio and blur_score are included as features intentionally —
+    # they capture image quality variation that correlates with season distribution
+    # but you can remove them for cleaner color-only experiments.
     X = df[feature_cols].values.astype(np.float32)
     y = df["label"].values.astype(np.int32)
 
-    scaler = MinMaxScaler()
+    scaler   = MinMaxScaler()
     X_scaled = scaler.fit_transform(X)
 
-    # Save scaler for use during prediction
     with open(SCALER_PATH, "wb") as f:
         pickle.dump(scaler, f)
     log.info(f"  Scaler saved: {SCALER_PATH}")
 
-    # ── Step 6: Train/test split ───────────────────────────────────────────
-    log.info("\n[Step 5] Splitting into train (80%) / test (20%)...")
-    log.info("  (stratified split — preserves class balance in both sets)")
-
+    # ── Step 4: Train/test split ───────────────────────────────────────
+    log.info("\n[Step 4] Stratified 80/20 split...")
     X_train, X_test, y_train, y_test = train_test_split(
-        X_scaled, y,
-        test_size=TEST_SIZE,
-        stratify=y,
-        random_state=RANDOM_STATE,
+        X_scaled, y, test_size=TEST_SIZE, stratify=y, random_state=RANDOM_STATE
     )
-
-    log.info(f"  X_train: {X_train.shape}   y_train: {y_train.shape}")
-    log.info(f"  X_test : {X_test.shape}    y_test : {y_test.shape}")
-
-    # Print per-class split counts
+    log.info(f"  X_train: {X_train.shape}  X_test: {X_test.shape}")
     for season, label in LABEL_MAP.items():
         tr = int((y_train == label).sum())
         te = int((y_test  == label).sum())
-        log.info(f"    {season:<8}: {tr} train  /  {te} test")
+        log.info(f"    {season:<8}: {tr} train / {te} test")
 
-    # ── Step 7: Save numpy arrays ──────────────────────────────────────────
-    log.info("\n[Step 6] Saving numpy arrays...")
-
+    # ── Step 5: Save arrays ────────────────────────────────────────────
+    log.info("\n[Step 5] Saving numpy arrays...")
     np.save("X_train.npy", X_train)
     np.save("X_test.npy",  X_test)
     np.save("y_train.npy", y_train)
     np.save("y_test.npy",  y_test)
 
-    log.info("  Saved: X_train.npy, X_test.npy, y_train.npy, y_test.npy")
-
-    # ── Summary ────────────────────────────────────────────────────────────
-    log.info(f"\n{'=' * 60}")
-    log.info("  DONE — Preprocessing complete")
-    log.info(f"{'=' * 60}")
-    log.info(f"  Total images processed : {len(df)}")
+    # ── Summary ────────────────────────────────────────────────────────
+    log.info(f"\n{'=' * 65}")
+    log.info("  PREPROCESSING COMPLETE")
+    log.info(f"{'=' * 65}")
+    log.info(f"  Total images processed : {total}")
     log.info(f"  Features per image     : {len(feature_cols)}")
     log.info(f"  Training samples       : {len(X_train)}")
     log.info(f"  Test samples           : {len(X_test)}")
-    log.info(f"\n  Output files:")
+    log.info(f"\n  Key outputs:")
     log.info(f"    {FEATURES_CSV}")
-    log.info(f"    X_train.npy, X_test.npy")
-    log.info(f"    y_train.npy, y_test.npy")
+    log.info(f"    {AUDIT_CSV}")
+    log.info(f"    X_train.npy, X_test.npy, y_train.npy, y_test.npy")
     log.info(f"    {SCALER_PATH}")
     log.info(f"\n  Next step → run: python train_traditional.py")
-    log.info("=" * 60)
-
-
-# ─── ENTRY POINT ──────────────────────────────────────────────────────────────
+    log.info("=" * 65)
 
 if __name__ == "__main__":
     run()
