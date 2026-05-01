@@ -6,27 +6,22 @@ A pilot study applying machine learning to automate personal color season classi
 
 ---
 
+## Project Overview
+
+ToneFit ML predicts a user's personal color season from a facial image and recommends suitable clothing color palettes. The system compares two Vision Transformer approaches — FaRL (Model A) and DINOv2 (Model B) — benchmarked against the Deep Armocromia paper baselines.
+
+- **Model A** — FaRL ViT-Base, Microsoft, pretrained on LAION-Face (face-specialized)
+- **Model B** — DINOv2 ViT-B/14, Meta AI, self-supervised general-purpose ViT
+
+**Output:** Predicted season + confidence scores from both models + clothing color palette + curated outfit sample photos
+
+---
+
 ## Introduction
 
-### Context and Frame of Reference
+Personal color analysis (Armocromia) classifies individuals into four seasonal color types — Spring, Summer, Autumn, Winter — based on skin tone, undertone, hair, and eye color. Each season maps to a recommended palette of clothing, accessories, and makeup. Korea has led mainstream adoption of this methodology, and the ECCV 2024 publication of the Deep Armocromia dataset (Stacchio et al., 2024) — the first large-scale dataset labeled by certified Armocromia professionals — opened the door to reproducible ML research in this domain.
 
-Personal color analysis, known in Italian as Armocromia, is a methodology that identifies the most flattering color palette for an individual based on their natural physical features — specifically skin tone, undertone, hair color, and eye color. The system classifies individuals into four seasonal categories: Spring (Warm, Light), Summer (Cool, Light), Autumn (Warm, Deep), and Winter (Cool, Deep). Each season corresponds to a recommended set of clothing colors, accessories, and makeup that harmonize with the individual's natural coloring, while contrasting colors that clash with their undertone are identified as unflattering.
-
-Korea has established itself as the global center of personal color analysis practice, with the methodology gaining widespread adoption in mainstream fashion and beauty culture. Academic and technology sectors have responded by developing machine learning approaches to automate what has historically been a subjective, expert-driven process. The publication of the Deep Armocromia dataset at ECCV 2024 (Stacchio et al., 2024) — the first large-scale dataset of face images labeled by certified Armocromia professionals — has created a foundation for rigorous, reproducible machine learning research in this domain.
-
-Stacchio et al. (2024) evaluated FaRL (Face Representation Learning) and ResNeXt50 on this dataset, finding that face-specialized Vision Transformers marginally outperform CNN-based models for season classification. However, their study did not evaluate DINOv2, a powerful general-purpose self-supervised Vision Transformer released by Meta AI in 2023, which has demonstrated strong performance across diverse visual classification tasks including facial analysis. ToneFit ML investigates whether DINOv2 can match or exceed FaRL on the Armocromia classification task, and delivers a working application that makes personal color analysis accessible to any user through a standard web browser.
-
-### Motivation from Previous Works
-
-The integration of machine learning into the fashion industry has expanded the possibilities for objective and automated styling systems. Prior research has shown that computer vision can effectively translate human visual perception into quantifiable digital representations. In the context of color analysis, Stacchio et al. (2024) demonstrated the use of deep learning models for Armocromia classification, where architectures such as FaRL64, FaRL16, and ResNeXt50 achieved accuracies of 0.554, 0.525, and 0.513 respectively on a 4-season classification task. Their findings highlight that face-specialized pretraining, such as FaRL trained on LAION-Face, provides a measurable advantage over general-purpose models pretrained on ImageNet. However, the study also emphasized persistent challenges in Armocromia classification, particularly the high confusion between visually similar categories such as Autumn and Winter, where significant misclassification rates were observed.
-
-In parallel, advancements in self-supervised learning have introduced more generalized yet powerful visual representation models. Oquab et al. (2023) proposed DINOv2, a Vision Transformer trained on a large-scale curated dataset of 142 million images, which has shown strong transferability across various downstream vision tasks. Subsequent studies (Zhao et al., 2025) have reported that DINOv2 can outperform both convolutional neural networks and supervised transformer models in fine-grained facial classification problems. This suggests that despite not being explicitly face-pretrained, DINOv2 may offer competitive or even superior performance compared to face-specialized models such as FaRL in Armocromia classification tasks, making it a relevant candidate for further comparative evaluation.
-
-### The Gap, Problem, or Opportunity
-
-The Deep Armocromia paper evaluated FaRL and ResNeXt50 but did not include DINOv2 or any other general-purpose self-supervised transformer. This creates a specific research gap: it is unknown whether DINOv2's powerful general visual representations can match or exceed FaRL's face-specialized representations for personal color season classification. Answering this question has practical implications — DINOv2 is significantly easier to deploy than FaRL, which requires specialized setup and custom pretrained weights. If DINOv2 achieves comparable accuracy, it represents a more accessible alternative for future personal color classification systems.
-
-Additionally, no working, publicly accessible application currently exists that combines ML-based personal color season prediction with comprehensive clothing, accessory, and makeup recommendations in a single deployable tool.
+Stacchio et al. found that FaRL64 (0.554 acc) and ResNeXt50 (0.513 acc) could classify the four seasons from face images, but did not evaluate DINOv2 (Oquab et al., 2023), a powerful general-purpose self-supervised ViT trained on 142 million images. ToneFit ML fills that gap: we compare FaRL and DINOv2 head-to-head on the same dataset using the same classifier head, and package the result into a publicly accessible Streamlit web app — the first tool to combine ML-based season prediction with full clothing, accessory, and makeup recommendations.
 
 ---
 
