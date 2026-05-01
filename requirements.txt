@@ -1,0 +1,13 @@
+streamlit
+torch
+torchvision
+timm>=0.9.0
+opencv-python-headless
+scikit-image
+numpy
+pillow
+scikit-learn
+matplotlib
+seaborn
+pandas
+imagehash

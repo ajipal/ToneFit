@@ -36,19 +36,20 @@ This is based on **Korean personal color analysis** — a widely practiced beaut
 
 ### ✅ We ARE building:
 - Automated face detection from uploaded photo
-- CIELab + HSV color feature extraction from face region
-- SVM and Random Forest classifiers (Model A)
-- MobileNetV2 deep learning classifier (Model B)
-- Season prediction with confidence score
+- CIELab + HSV color feature extraction from face region (for EDA)
+- FaRL (Face Representation Learning) ViT-Base classifier (Model A)
+- DINOv2 ViT-Base classifier (Model B)
+- Season prediction with confidence score from both models (ensemble)
 - Color palette display per season
 - Side-by-side outfit sample photo display (pre-curated, not virtual try-on)
-- Simple prototype interface (Jupyter notebook or basic web UI)
+- Streamlit web app (deployable on Streamlit Cloud)
 
 ### ❌ We are NOT building:
+- SVM / Random Forest traditional ML models
 - Virtual try-on or body warping
 - 12-tone sub-season classification
 - Real-time video analysis
-- A deployed production app
+- A deployed production app (prototype only)
 
 ---
 
@@ -58,13 +59,16 @@ This is based on **Korean personal color analysis** — a widely practiced beaut
 Face images of celebrities with publicly documented personal color seasons.
 Labels come from professional color analyst diagnoses published online — NOT guessed by the team.
 
+**Current status:** ~952 raw images collected (spring=254, summer=211, autumn=244, winter=243).
+Expect ~570 usable images after manual cleaning (40% loss estimate).
+
 **Structure:**
 ```
 dataset/
-  spring/    → ~75 face images (224x224 px, cropped)
-  summer/    → ~75 face images
-  autumn/    → ~75 face images
-  winter/    → ~75 face images
+  spring/    → face images (224x224 px, cropped)
+  summer/    → face images
+  autumn/    → face images
+  winter/    → face images
 ```
 
 **Celebrity breakdown per season:**
@@ -89,34 +93,33 @@ Winter (15 celebrities):
 - Korean: Jisoo (BLACKPINK), Suga/Yoongi (BTS), Jin (BTS), Hyun Bin, Song Hye-kyo
 - Western: Megan Fox, Dua Lipa, Keanu Reeves
 
-### CapstoneA Supplement
-Download from: https://universe.roboflow.com/capstonea-9fv4r/personal-color
-230 labeled images (Spring/Summer/Autumn/Winter), CC BY 4.0
+### Deep Armocromia Dataset (Primary / Supplement)
+Download from: https://github.com/lorenzo-stacchio/Deep-Armocromia
+~4,920 expert-labeled face images (Spring/Summer/Autumn/Winter), ECCV 2024 paper dataset.
 Add to the corresponding season folders after downloading.
 
 ---
 
 ## Full Pipeline (Steps in Order)
 
-### Step 1 — Data Collection (`collect_data.py`) ✅ DONE
-- Uses icrawler to scrape Google Images for each celebrity
+### Step 1 — Data Collection (`collectdata.py`) ✅ DONE
+- Uses BingImageCrawler to scrape images for each celebrity
 - Applies OpenCV Haar Cascade face detector
 - Crops and saves 224x224 face images per season folder
+- Result: ~952 images across 4 seasons
 
-### Step 2 — Preprocessing (`preprocess.py`) 🔲 TODO
+### Step 2 — Preprocessing (`preprocess.py`) ✅ DONE
 - Remove duplicates (perceptual hashing)
-- Manual quality check (delete bad crops)
 - Convert images to CIELab and HSV color spaces
 - Extract features per image:
   - L* mean, a* mean, b* mean (CIELab)
   - L* std, a* std, b* std
   - ITA score: arctan((L* - 50) / b*) × (180/π)
   - Hue mean, Saturation mean, Value mean (HSV)
-- Save features to CSV: `features.csv` with columns [filename, season, L_mean, a_mean, b_mean, L_std, a_std, b_std, ITA, H_mean, S_mean, V_mean]
-- Encode labels: spring=0, summer=1, autumn=2, winter=3
-- Normalize features using MinMaxScaler
-- Split: 80% train / 20% test (stratified, random_state=42)
-- Save: `X_train.npy`, `X_test.npy`, `y_train.npy`, `y_test.npy`
+- Save features to CSV: `features.csv`
+- Save train/test split manifest: `data_split.csv` (columns: filename, season, split)
+- Split: 80% train / 20% test (stratified, random_state=42) — follows Deep Armocromia paper
+- Save: `X_train.npy`, `X_test.npy`, `y_train.npy`, `y_test.npy` (EDA use only)
 
 ### Step 3 — EDA (`eda.ipynb`) 🔲 TODO
 - Class distribution bar chart
@@ -125,41 +128,35 @@ Add to the corresponding season folders after downloading.
 - Correlation heatmap of features
 - PCA visualization (2D scatter, colored by season)
 
-### Step 4 — Traditional ML Training (`train_traditional.py`) 🔲 TODO
-- Load X_train, y_train
-- Train SVM (RBF kernel, GridSearchCV for C and gamma)
-- Train Random Forest (100 estimators, evaluate feature importance)
-- 5-fold stratified cross-validation on training set
-- Save models: `models/svm_model.pkl`, `models/rf_model.pkl`
-- Save scaler: `models/scaler.pkl`
+### Step 4 — FaRL Training (`train_farl.py`) 🔲 TODO
+- Load ViT-Base via timm, apply FaRL pretrained weights from `models/farl_weights.pth`
+- Fallback: ResNeXt50 from torchvision if FaRL weights not found
+- Classifier head: FC(384) → ReLU → Dropout(0.5) → FC(4)
+- Optimizer: AdamW(lr=1e-3, weight_decay=1e-5)
+- Scheduler: CosineAnnealingWarmRestarts(T_0=10, eta_min=1e-5)
+- 50 epochs, batch_size=64, early stopping
+- Save: `models/farl_model.pth`, `results/farl_history.json`, `results/farl_training.png`
 
-### Step 5 — Deep Learning Training (`train_deeplearning.py`) 🔲 TODO
-- Load images from dataset/ folders using ImageDataGenerator
-- MobileNetV2 base (pretrained ImageNet, frozen initially)
-- Add: GlobalAveragePooling2D → Dense(128, ReLU) → Dropout(0.3) → Dense(4, Softmax)
-- Compile: Adam(lr=0.0001), categorical_crossentropy
-- Train: 30 epochs, batch_size=32, early stopping (patience=5)
-- Unfreeze top layers for fine-tuning (second pass)
-- Save model: `models/mobilenetv2_model.h5`
-- Plot training/validation loss and accuracy curves
+### Step 5 — DINOv2 Training (`train_dinov2.py`) 🔲 TODO
+- Load via torch.hub: `facebookresearch/dinov2`, `dinov2_vitb14` (feature_dim=768)
+- Same classifier head, optimizer, scheduler, and epoch settings as FaRL
+- Save: `models/dinov2_model.pth`, `results/dinov2_history.json`, `results/dinov2_training.png`
 
 ### Step 6 — Evaluation (`evaluate.py`) 🔲 TODO
-- Load all 3 models (SVM, RF, MobileNetV2)
-- Run predictions on X_test / test image folder
-- Generate for each model:
-  - Classification report (accuracy, precision, recall, F1)
-  - Confusion matrix (heatmap)
-  - Top-2 accuracy
-- Save results table to `results/comparison_table.csv`
-- Print final comparison table
+- Load both FaRL and DINOv2 models (gracefully skip missing)
+- Compute: accuracy, top-2 accuracy, macro/weighted F1, per-season recall
+- Generate confusion matrices per model
+- Compare against paper baselines:
+  - FaRL16: 0.525 accuracy | FaRL64: 0.554 accuracy | ResNeXt50: 0.513 accuracy
+- Save: `results/comparison_table.csv`, `results/model_comparison.png`
 
-### Step 7 — Prediction Demo (`predict.py`) 🔲 TODO
-- Accept image path as argument
-- Detect and crop face using OpenCV
-- Extract features
-- Run all 3 models, show predictions with confidence
-- Display season name + color palette swatches
-- Show 2-3 outfit sample images from `outfits/[season]/`
+### Step 7 — Streamlit App (`app.py`) 🔲 TODO
+- st.file_uploader + st.camera_input tabs
+- OpenCV Haar Cascade face detection
+- Load both FaRL and DINOv2 with @st.cache_resource
+- Final prediction = argmax of averaged confidences from both models
+- Recommendation tabs: Color Palette, Outfits, Accessories, Makeup
+- Load outfit photos from `outfits/{season}/` if present
 
 ---
 
@@ -194,6 +191,7 @@ The final paper must follow this structure:
 - **ITA score:** Key feature — Individual Typology Angle. Formula: `ITA = arctan((L* - 50) / b*) × (180/π)`. Higher ITA = lighter/cooler skin. Lower ITA = darker/warmer skin.
 - **CIELab color space** is the primary feature space — consistent with Korean skin tone classification literature (Kye & Lee, 2022; Soonchunhyang University, 2023).
 - **Autumn is historically the hardest class to predict** in existing studies (ColorInsight, 2023). Track Autumn recall separately.
+- **Paper baselines (Deep Armocromia, Stacchio et al. ECCV 2024):** FaRL64=0.554, ResNeXt50=0.513 — these are the benchmarks to compare against.
 
 ---
 
@@ -201,26 +199,29 @@ The final paper must follow this structure:
 
 ```
 Python 3.10+
-opencv-python        # face detection, image processing
-scikit-learn         # SVM, Random Forest, metrics, preprocessing
-tensorflow           # MobileNetV2, deep learning
-pandas               # data handling
-numpy                # array operations
-matplotlib           # plotting
-seaborn              # heatmaps, visualizations
-scikit-image         # CIELab color conversion
-icrawler             # Google Image scraping (data collection only)
-imagehash            # duplicate detection
+torch / torchvision      # FaRL, DINOv2, deep learning
+timm>=0.9.0              # ViT-Base model loading for FaRL
+opencv-python            # face detection, image processing
+scikit-learn             # preprocessing, metrics
+scikit-image             # CIELab color conversion
+pandas                   # data handling
+numpy                    # array operations
+matplotlib               # plotting
+seaborn                  # heatmaps, visualizations
+streamlit                # web app interface
+imagehash                # duplicate detection
+pillow                   # image I/O
+icrawler                 # Bing Image scraping (data collection only)
 ```
 
 ---
 
 ## File Naming Conventions
 
-- Raw downloaded images: `dataset/raw/[season]/[number].jpg`
 - Processed face crops: `dataset/[season]/[season]_[celebrity_name]_[number].jpg`
+- Data split manifest: `data_split.csv` — columns: filename, season, split
 - Feature CSV: `features.csv` — columns: filename, season, label, L_mean, a_mean, b_mean, L_std, a_std, b_std, ITA, H_mean, S_mean, V_mean
-- Models: `models/svm_model.pkl`, `models/rf_model.pkl`, `models/mobilenetv2_model.h5`
+- Models: `models/farl_model.pth`, `models/dinov2_model.pth`
 - Scaler: `models/scaler.pkl`
 - Results: `results/comparison_table.csv`, `results/confusion_matrix_[model].png`
 
@@ -230,15 +231,18 @@ imagehash            # duplicate detection
 
 - [x] Project proposal written
 - [x] Celebrity list verified (60 celebrities across 4 seasons)
-- [x] Data collection script written (`collect_data.py`)
-- [ ] Dataset collected (run `collect_data.py`)
-- [ ] CapstoneA dataset downloaded and merged
-- [ ] Preprocessing script written
-- [ ] EDA notebook written
-- [ ] Traditional ML training script written
-- [ ] Deep learning training script written
-- [ ] Evaluation script written
-- [ ] Prediction demo script written
+- [x] Data collection script written (`collectdata.py`)
+- [x] Dataset collected (~952 images)
+- [ ] Manual dataset cleaning (team reviews each season folder, deletes wrong-person images)
+- [ ] Deep Armocromia dataset downloaded and merged
+- [x] Preprocessing script written (`preprocess.py`)
+- [ ] Preprocessing run (run after cleaning)
+- [ ] EDA notebook written (`eda.ipynb`)
+- [x] FaRL training script written (`train_farl.py`)
+- [x] DINOv2 training script written (`train_dinov2.py`)
+- [x] Evaluation script written (`evaluate.py`)
+- [x] Streamlit app written (`app.py`)
+- [ ] Models trained on Colab with T4 GPU
 - [ ] Final paper written
 
 ---
@@ -246,8 +250,8 @@ imagehash            # duplicate detection
 ## When Helping With This Project
 
 1. Always follow the pipeline order above
-2. The next step to work on is **Step 2 — Preprocessing** (`preprocess.py`)
+2. The next steps are: manual data cleaning → run preprocess.py → train on Colab
 3. Keep code clean, well-commented, and beginner-friendly — the team is not highly technical
 4. Use Google Colab-compatible code where possible (the team will likely run on Colab)
 5. Always save intermediate outputs (CSV, .npy files, model files) so steps can be run independently
-6. When writing evaluation code, always compare all 3 models side by side
+6. When writing evaluation code, always compare both models side by side against Deep Armocromia paper baselines

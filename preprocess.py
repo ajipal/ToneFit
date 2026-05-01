@@ -62,7 +62,8 @@ MIN_BLUR_SCORE    = 60    # Laplacian variance below this = blurry
 MIN_SKIN_RATIO    = 0.05  # < 5% skin pixels detected = bad crop
 
 RANDOM_STATE      = 42
-TEST_SIZE         = 0.20
+TEST_SIZE         = 0.20   # 80/20 split — follows Deep Armocromia paper
+SPLIT_CSV         = "data_split.csv"
 
 # ── LOGGING ───────────────────────────────────────────────────────────────────
 
@@ -351,34 +352,47 @@ def run():
         log.warning(f"\n  ⚠ Smallest class has only {min_class} images.")
         log.warning("    Consider collecting more data before training.")
 
-    # ── Step 3: Normalize ──────────────────────────────────────────────
-    log.info("\n[Step 3] Normalizing with MinMaxScaler...")
-    # Note: skin_ratio and blur_score are included as features intentionally —
-    # they capture image quality variation that correlates with season distribution
-    # but you can remove them for cleaner color-only experiments.
-    X = df[feature_cols].values.astype(np.float32)
-    y = df["label"].values.astype(np.int32)
-
-    scaler   = MinMaxScaler()
-    X_scaled = scaler.fit_transform(X)
+    # ── Step 3: Fit scaler on full set (transform happens after split) ───
+    log.info("\n[Step 3] Fitting MinMaxScaler on full feature set...")
+    scaler = MinMaxScaler()
+    scaler.fit(df[feature_cols].values.astype(np.float32))
 
     with open(SCALER_PATH, "wb") as f:
         pickle.dump(scaler, f)
     log.info(f"  Scaler saved: {SCALER_PATH}")
 
-    # ── Step 4: Train/test split ───────────────────────────────────────
-    log.info("\n[Step 4] Stratified 80/20 split...")
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_scaled, y, test_size=TEST_SIZE, stratify=y, random_state=RANDOM_STATE
+    # ── Step 4: Stratified 80/20 split ───────────────────────────────
+    log.info("\n[Step 4] Stratified 80/20 split (follows Deep Armocromia paper)...")
+    train_idx, test_idx = train_test_split(
+        np.arange(len(df)), test_size=TEST_SIZE,
+        stratify=df["season"].values, random_state=RANDOM_STATE
     )
-    log.info(f"  X_train: {X_train.shape}  X_test: {X_test.shape}")
-    for season, label in LABEL_MAP.items():
-        tr = int((y_train == label).sum())
-        te = int((y_test  == label).sum())
+
+    df["split"] = "test"
+    df.loc[train_idx, "split"] = "train"
+
+    log.info(f"  Train: {len(train_idx)}  Test: {len(test_idx)}")
+    for season in SEASONS:
+        tr = len(df[(df["season"] == season) & (df["split"] == "train")])
+        te = len(df[(df["season"] == season) & (df["split"] == "test")])
         log.info(f"    {season:<8}: {tr} train / {te} test")
 
-    # ── Step 5: Save arrays ────────────────────────────────────────────
-    log.info("\n[Step 5] Saving numpy arrays...")
+    # Save data_split.csv — used by train_farl.py and train_dinov2.py
+    split_df = df[["filename", "season", "split"]].copy()
+    split_df.to_csv(SPLIT_CSV, index=False)
+    log.info(f"  Saved: {SPLIT_CSV}")
+
+    # ── Step 5: Save feature arrays (for EDA/SVM experiments) ────────
+    log.info("\n[Step 5] Saving numpy arrays for EDA...")
+    X = df[feature_cols].values.astype(np.float32)
+    y = df["label"].values.astype(np.int32)
+    X_scaled = scaler.transform(X)
+
+    X_train = X_scaled[train_idx]
+    X_test  = X_scaled[test_idx]
+    y_train = y[train_idx]
+    y_test  = y[test_idx]
+
     np.save("X_train.npy", X_train)
     np.save("X_test.npy",  X_test)
     np.save("y_train.npy", y_train)
@@ -390,14 +404,15 @@ def run():
     log.info(f"{'=' * 65}")
     log.info(f"  Total images processed : {total}")
     log.info(f"  Features per image     : {len(feature_cols)}")
-    log.info(f"  Training samples       : {len(X_train)}")
-    log.info(f"  Test samples           : {len(X_test)}")
+    log.info(f"  Training samples       : {len(train_idx)}")
+    log.info(f"  Test samples           : {len(test_idx)}")
     log.info(f"\n  Key outputs:")
+    log.info(f"    {SPLIT_CSV}  ← used by train_farl.py / train_dinov2.py")
     log.info(f"    {FEATURES_CSV}")
     log.info(f"    {AUDIT_CSV}")
-    log.info(f"    X_train.npy, X_test.npy, y_train.npy, y_test.npy")
+    log.info(f"    X_train.npy, X_test.npy (EDA only)")
     log.info(f"    {SCALER_PATH}")
-    log.info(f"\n  Next step → run: python train_traditional.py")
+    log.info(f"\n  Next step → run: python train_farl.py  OR  python train_dinov2.py")
     log.info("=" * 65)
 
 if __name__ == "__main__":
