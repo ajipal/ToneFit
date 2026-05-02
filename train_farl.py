@@ -551,7 +551,7 @@ def main():
         if val_acc > best_val_acc:
             best_val_acc = val_acc
             best_epoch   = epoch
-            torch.save(model.state_dict(), MODEL_OUT)
+            torch.save({"backbone": model.backbone.state_dict(), "head": model.head.state_dict()}, MODEL_OUT)
 
         elapsed = time.time() - t_start
         current_lr = optimizer.param_groups[0]["lr"]

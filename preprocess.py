@@ -64,6 +64,13 @@ MIN_SKIN_RATIO    = 0.05  # < 5% skin pixels detected = bad crop
 RANDOM_STATE      = 42
 TEST_SIZE         = 0.20   # 80/20 split — follows Deep Armocromia paper
 SPLIT_CSV         = "data_split.csv"
+ANNOTATIONS_CSV   = "annotations.csv"   # Deep Armocromia pre-defined split
+ITALIAN_TO_ENGLISH = {
+    "primavera": "spring",
+    "estate":    "summer",
+    "autunno":   "autumn",
+    "inverno":   "winter",
+}
 
 # ── LOGGING ───────────────────────────────────────────────────────────────────
 
@@ -169,6 +176,26 @@ def check_quality(img_bgr, L_mean, S_mean):
     if S_mean < MIN_SATURATION:
         return False, f"desaturated (S={S_mean:.3f})"
     return True, "ok"
+
+def get_armocromia_partition(filenames):
+    """
+    Read Deep Armocromia annotations.csv to get the paper's pre-defined
+    train/test partition. Returns dict {filename: "train"/"test"} or None.
+    """
+    if not os.path.exists(ANNOTATIONS_CSV):
+        return None
+    try:
+        ann = pd.read_csv(ANNOTATIONS_CSV)
+        ann["filename"] = ann["path_rgb_original"].apply(
+            lambda p: os.path.basename(str(p))
+        )
+        # annotations.csv uses "train" / "test" in the partition column
+        partition_map = ann.set_index("filename")["partition"].to_dict()
+        log.info(f"  annotations.csv loaded — {len(partition_map)} entries")
+        return partition_map
+    except Exception as exc:
+        log.warning(f"  Could not read annotations.csv: {exc}")
+        return None
 
 # ── FEATURE EXTRACTION ────────────────────────────────────────────────────────
 
@@ -361,15 +388,27 @@ def run():
         pickle.dump(scaler, f)
     log.info(f"  Scaler saved: {SCALER_PATH}")
 
-    # ── Step 4: Stratified 80/20 split ───────────────────────────────
-    log.info("\n[Step 4] Stratified 80/20 split (follows Deep Armocromia paper)...")
-    train_idx, test_idx = train_test_split(
-        np.arange(len(df)), test_size=TEST_SIZE,
-        stratify=df["season"].values, random_state=RANDOM_STATE
-    )
+    # ── Step 4: Assign train/test split ──────────────────────────────────────
+    partition_map = get_armocromia_partition(df["filename"].tolist())
 
-    df["split"] = "test"
-    df.loc[train_idx, "split"] = "train"
+    if partition_map:
+        log.info("\n[Step 4] Using Deep Armocromia pre-defined train/test partition...")
+        df["split"] = df["filename"].map(partition_map)
+        # Any image not in annotations.csv defaults to train
+        df["split"] = df["split"].fillna("train")
+        # Normalize: anything that's not "test" becomes "train"
+        df["split"] = df["split"].apply(lambda s: "test" if str(s).strip().lower() == "test" else "train")
+    else:
+        log.info("\n[Step 4] Stratified 80/20 split (follows Deep Armocromia paper)...")
+        train_idx, test_idx = train_test_split(
+            np.arange(len(df)), test_size=TEST_SIZE,
+            stratify=df["season"].values, random_state=RANDOM_STATE
+        )
+        df["split"] = "test"
+        df.loc[train_idx, "split"] = "train"
+
+    train_idx = df.index[df["split"] == "train"].tolist()
+    test_idx  = df.index[df["split"] == "test"].tolist()
 
     log.info(f"  Train: {len(train_idx)}  Test: {len(test_idx)}")
     for season in SEASONS:
@@ -388,10 +427,10 @@ def run():
     y = df["label"].values.astype(np.int32)
     X_scaled = scaler.transform(X)
 
-    X_train = X_scaled[train_idx]
-    X_test  = X_scaled[test_idx]
-    y_train = y[train_idx]
-    y_test  = y[test_idx]
+    X_train = X_scaled[np.array(train_idx)]
+    X_test  = X_scaled[np.array(test_idx)]
+    y_train = y[np.array(train_idx)]
+    y_test  = y[np.array(test_idx)]
 
     np.save("X_train.npy", X_train)
     np.save("X_test.npy",  X_test)

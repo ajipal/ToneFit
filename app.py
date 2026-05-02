@@ -56,6 +56,9 @@ SEASON_DATA = {
             "blush": "Peach, apricot, warm rose",
             "eyeshadow": "Warm brown, bronze, champagne gold",
         },
+        "gradient": "linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)",
+        "text_color": "#7B3F00",
+        "bar_color": "#FF7F50",
     },
     "summer": {
         "emoji": "☁️",
@@ -81,6 +84,9 @@ SEASON_DATA = {
             "blush": "Cool pink, soft rose, berry",
             "eyeshadow": "Cool taupe, mauve, soft lavender, gray",
         },
+        "gradient": "linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%)",
+        "text_color": "#1a237e",
+        "bar_color": "#7B68EE",
     },
     "autumn": {
         "emoji": "🍂",
@@ -106,6 +112,9 @@ SEASON_DATA = {
             "blush": "Warm peach, terracotta, copper",
             "eyeshadow": "Warm brown, bronze, copper, olive gold",
         },
+        "gradient": "linear-gradient(135deg, #f9d976 0%, #f39f86 100%)",
+        "text_color": "#6B2D00",
+        "bar_color": "#CC5500",
     },
     "winter": {
         "emoji": "❄️",
@@ -131,6 +140,9 @@ SEASON_DATA = {
             "blush": "Cool pink, berry, soft rose",
             "eyeshadow": "Cool gray, navy, silver, deep plum",
         },
+        "gradient": "linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%)",
+        "text_color": "#FFFFFF",
+        "bar_color": "#4169E1",
     },
 }
 
@@ -178,10 +190,10 @@ class FaRLClassifier(nn.Module):
             self.backbone = nn.Identity()
             feat_dim = 768
         self.head = nn.Sequential(
-            nn.Linear(feat_dim, 256),
+            nn.Linear(feat_dim, feat_dim // 2),
             nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(256, num_classes),
+            nn.Dropout(0.5),
+            nn.Linear(feat_dim // 2, num_classes),
         )
 
     def forward(self, x):
@@ -206,10 +218,10 @@ class DINOv2Classifier(nn.Module):
             self.backbone = nn.Identity()
             feat_dim = 768
         self.head = nn.Sequential(
-            nn.Linear(feat_dim, 256),
+            nn.Linear(feat_dim, feat_dim // 2),
             nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(256, num_classes),
+            nn.Dropout(0.5),
+            nn.Linear(feat_dim // 2, num_classes),
         )
 
     def forward(self, x):
@@ -230,9 +242,12 @@ def load_farl_model():
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model = FaRLClassifier(num_classes=NUM_CLASSES)
         checkpoint = torch.load(FARL_PATH, map_location=device)
-        # Accept bare state_dict or wrapped {"model_state_dict": ...}
-        state = checkpoint.get("model_state_dict", checkpoint)
-        model.load_state_dict(state, strict=False)
+        if isinstance(checkpoint, dict) and "backbone" in checkpoint and "head" in checkpoint:
+            model.backbone.load_state_dict(checkpoint["backbone"], strict=False)
+            model.head.load_state_dict(checkpoint["head"])
+        else:
+            state = checkpoint.get("model_state_dict", checkpoint)
+            model.load_state_dict(state, strict=False)
         model.to(device)
         model.eval()
         return model, None
@@ -249,8 +264,12 @@ def load_dinov2_model():
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model = DINOv2Classifier(num_classes=NUM_CLASSES)
         checkpoint = torch.load(DINOV2_PATH, map_location=device)
-        state = checkpoint.get("model_state_dict", checkpoint)
-        model.load_state_dict(state, strict=False)
+        if isinstance(checkpoint, dict) and "backbone" in checkpoint and "head" in checkpoint:
+            model.backbone.load_state_dict(checkpoint["backbone"], strict=False)
+            model.head.load_state_dict(checkpoint["head"])
+        else:
+            state = checkpoint.get("model_state_dict", checkpoint)
+            model.load_state_dict(state, strict=False)
         model.to(device)
         model.eval()
         return model, None
@@ -356,25 +375,24 @@ def hex_swatch_html(colors: list, hexes: list) -> str:
     )
 
 
-def confidence_bar(conf_dict: dict, model_label: str, highlight_season: str):
-    """Render a simple confidence bar chart with Streamlit."""
-    import pandas as pd
-
-    labels = [f"{SEASON_DATA[s]['emoji']} {s.capitalize()}" for s in SEASONS]
-    values = [conf_dict[s] * 100 for s in SEASONS]
-
-    df = pd.DataFrame({"Season": labels, "Confidence (%)": values})
-    df = df.set_index("Season")
-
-    st.markdown(f"**{model_label}**")
-    st.bar_chart(df, height=220)
-
-    # Highlight best prediction
-    best = max(conf_dict, key=conf_dict.get)
-    st.caption(
-        f"Top prediction: **{SEASON_DATA[best]['emoji']} {best.capitalize()}** "
-        f"({conf_dict[best]*100:.1f}%)"
-    )
+def confidence_bar(conf_dict: dict, model_label: str):
+    """Render horizontal confidence progress bars styled per season."""
+    bars_html = f'<p style="font-weight:700; font-size:13px; margin:0 0 8px 0; color:#444;">{model_label}</p>'
+    for season in SEASONS:
+        conf = conf_dict[season]
+        pct = conf * 100
+        color = SEASON_DATA[season]["bar_color"]
+        emoji = SEASON_DATA[season]["emoji"]
+        bars_html += f"""
+        <div style="margin-bottom:8px;">
+          <div style="display:flex; justify-content:space-between; font-size:12px; color:#555; margin-bottom:3px;">
+            <span>{emoji} {season.capitalize()}</span><span>{pct:.1f}%</span>
+          </div>
+          <div style="background:#e9ecef; border-radius:4px; height:8px;">
+            <div style="background:{color}; width:{pct:.1f}%; height:8px; border-radius:4px; transition:width 0.3s;"></div>
+          </div>
+        </div>"""
+    st.markdown(bars_html, unsafe_allow_html=True)
 
 
 def outfit_photos_for_season(season: str):
@@ -554,8 +572,6 @@ def main():
         .stTabs [data-baseweb="tab"] {font-size: 14px; font-weight: 600;}
         /* Section headers */
         h3 {margin-top: 1.4rem !important;}
-        /* Tighten bar chart labels */
-        .stBarChart {margin-top: -10px;}
         </style>
         """,
         unsafe_allow_html=True,
@@ -719,13 +735,13 @@ def main():
 
     with chart_col_l:
         if farl_conf is not None:
-            confidence_bar(farl_conf, "FaRL (ViT-B/16)", "")
+            confidence_bar(farl_conf, "FaRL (ViT-B/16)")
         else:
             st.info("FaRL model not available.", icon="⚠️")
 
     with chart_col_r:
         if dinov2_conf is not None:
-            confidence_bar(dinov2_conf, "DINOv2 (ViT-B/14)", "")
+            confidence_bar(dinov2_conf, "DINOv2 (ViT-B/14)")
         else:
             st.info("DINOv2 model not available.", icon="⚠️")
 
@@ -741,27 +757,29 @@ def main():
     st.markdown("---")
     emoji = SEASON_DATA[final_season]["emoji"]
     undertone = SEASON_DATA[final_season]["undertone"]
+    gradient = SEASON_DATA[final_season]["gradient"]
+    text_color = SEASON_DATA[final_season]["text_color"]
 
-    # Large result banner
+    # Large result banner using season-specific gradient and text color
     st.markdown(
         f"""
         <div style="
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: {gradient};
             border-radius: 20px; padding: 32px; text-align:center;
-            color: white; margin: 10px 0 24px 0;
+            color: {text_color}; margin: 10px 0 24px 0;
             box-shadow: 0 8px 32px rgba(0,0,0,0.15);">
           <div style="font-size: 52px; margin-bottom: 8px;">{emoji}</div>
           <div style="font-size: 32px; font-weight: 800; letter-spacing: -0.5px;">
             {final_season.capitalize()} Season
           </div>
-          <div style="font-size: 16px; color: #ccc; margin-top: 6px;">
+          <div style="font-size: 16px; opacity: 0.8; margin-top: 6px;">
             {undertone}
           </div>
           <div style="
               display:inline-block; margin-top:16px;
-              background: rgba(255,255,255,0.12);
+              background: rgba(0,0,0,0.10);
               border-radius: 50px; padding: 6px 20px;
-              font-size: 14px; color: #eee;">
+              font-size: 14px; opacity: 0.9;">
             Average confidence: <strong>{final_confidence:.1f}%</strong>
             &nbsp;·&nbsp; Based on {len(available)} model{'s' if len(available) > 1 else ''}
           </div>
