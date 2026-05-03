@@ -11,7 +11,7 @@ Improvements over v1:
   - Full audit log per image in preprocessing_audit.csv
 
 What this script does:
-  1. Load all images from dataset/spring|summer|autumn|winter
+  1. Load all images from RGB-M/train/ and RGB-M/test/ recursively
   2. Filter out blurry, overexposed, or desaturated images
   3. Isolate skin pixels using MediaPipe face landmarks
   4. Extract CIELab + HSV color features from skin region only
@@ -41,16 +41,17 @@ import numpy as np
 import pandas as pd
 from skimage import color as skcolor
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import train_test_split
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 
-DATASET_DIR       = "dataset"
-SEASONS           = ["spring", "summer", "autumn", "winter"]
-LABEL_MAP         = {"spring": 0, "summer": 1, "autumn": 2, "winter": 3}
+TRAIN_DIR         = "RGB-M/train"   # READ ONLY — do not modify
+TEST_DIR          = "RGB-M/test"    # READ ONLY — do not modify
+SEASONS           = ["autumn", "spring", "summer", "winter"]  # alphabetical — matches ImageFolder
+LABEL_MAP         = {"autumn": 0, "spring": 1, "summer": 2, "winter": 3}
 VALID_EXT         = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
 FEATURES_CSV      = "features.csv"
 AUDIT_CSV         = "preprocessing_audit.csv"
+SPLIT_CSV         = "data_split.csv"
 MODELS_DIR        = "models"
 SCALER_PATH       = os.path.join(MODELS_DIR, "scaler.pkl")
 
@@ -62,15 +63,6 @@ MIN_BLUR_SCORE    = 60    # Laplacian variance below this = blurry
 MIN_SKIN_RATIO    = 0.05  # < 5% skin pixels detected = bad crop
 
 RANDOM_STATE      = 42
-TEST_SIZE         = 0.20   # 80/20 split — follows Deep Armocromia paper
-SPLIT_CSV         = "data_split.csv"
-ANNOTATIONS_CSV   = "annotations.csv"   # Deep Armocromia pre-defined split
-ITALIAN_TO_ENGLISH = {
-    "primavera": "spring",
-    "estate":    "summer",
-    "autunno":   "autumn",
-    "inverno":   "winter",
-}
 
 # ── LOGGING ───────────────────────────────────────────────────────────────────
 
@@ -177,25 +169,6 @@ def check_quality(img_bgr, L_mean, S_mean):
         return False, f"desaturated (S={S_mean:.3f})"
     return True, "ok"
 
-def get_armocromia_partition(filenames):
-    """
-    Read Deep Armocromia annotations.csv to get the paper's pre-defined
-    train/test partition. Returns dict {filename: "train"/"test"} or None.
-    """
-    if not os.path.exists(ANNOTATIONS_CSV):
-        return None
-    try:
-        ann = pd.read_csv(ANNOTATIONS_CSV)
-        ann["filename"] = ann["path_rgb_original"].apply(
-            lambda p: os.path.basename(str(p))
-        )
-        # annotations.csv uses "train" / "test" in the partition column
-        partition_map = ann.set_index("filename")["partition"].to_dict()
-        log.info(f"  annotations.csv loaded — {len(partition_map)} entries")
-        return partition_map
-    except Exception as exc:
-        log.warning(f"  Could not read annotations.csv: {exc}")
-        return None
 
 # ── FEATURE EXTRACTION ────────────────────────────────────────────────────────
 
@@ -294,62 +267,62 @@ def run():
     # ── Step 1: Extract features + quality filter ──────────────────────
     log.info("\n[Step 1] Extracting skin-region color features...")
 
-    for season in SEASONS:
-        season_dir = os.path.join(DATASET_DIR, season)
-        if not os.path.isdir(season_dir):
-            log.warning(f"  Season folder not found: {season_dir} (skipping)")
+    for split_name, split_root in [("train", TRAIN_DIR), ("test", TEST_DIR)]:
+        if not os.path.isdir(split_root):
+            log.warning(f"  Split folder not found: {split_root} — skipping")
             continue
 
-        files = sorted([
-            f for f in os.listdir(season_dir)
-            if f.lower().endswith(VALID_EXT)
-        ])
-        log.info(f"\n  {season.upper():<8}: {len(files)} images")
+        log.info(f"\n  [{split_name.upper()}] {split_root}")
 
-        saved_count    = 0
-        filtered_count = 0
-
-        for fname in files:
-            path     = os.path.join(season_dir, fname)
-            features = extract_features(path)
-
-            if features is None:
-                reason = "unreadable"
-                log.debug(f"    SKIP {fname}: {reason}")
-                audit_rows.append({"filename": fname, "season": season, "status": reason})
-                filtered_count += 1
+        for season in SEASONS:
+            season_dir = os.path.join(split_root, season)
+            if not os.path.isdir(season_dir):
+                log.warning(f"    Season folder not found: {season_dir} (skipping)")
                 continue
 
-            if "_reject" in features:
-                reason = features["_reject"]
-                log.debug(f"    SKIP {fname}: {reason}")
-                audit_rows.append({"filename": fname, "season": season, "status": reason})
-                filtered_count += 1
-                continue
+            # Collect files recursively through all sub-type subfolders
+            all_files = []
+            for root_dir, _, files in os.walk(season_dir):
+                for fname in sorted(files):
+                    if fname.lower().endswith(VALID_EXT):
+                        all_files.append(os.path.join(root_dir, fname))
 
-            # Quality checks
-            passed, reason = check_quality(
-                cv2.imread(path), features["L_mean"], features["S_mean"]
-            )
-            if not passed:
-                log.debug(f"    SKIP {fname}: {reason}")
-                audit_rows.append({"filename": fname, "season": season, "status": reason})
-                filtered_count += 1
-                continue
+            log.info(f"    {season.upper():<8}: {len(all_files)} images")
 
-            # Passed all checks
-            row = {"filename": fname, "season": season, "label": LABEL_MAP[season]}
-            row.update(features)
-            rows.append(row)
-            audit_rows.append({"filename": fname, "season": season, "status": "ok"})
-            saved_count += 1
+            saved_count    = 0
+            filtered_count = 0
 
-        log.info(f"    ✓ kept: {saved_count}  ✗ filtered: {filtered_count}")
+            for path in all_files:
+                rel_path = os.path.relpath(path, "RGB-M").replace("\\", "/")
+                features = extract_features(path)
+
+                if features is None:
+                    audit_rows.append({"filename": rel_path, "season": season, "split": split_name, "status": "unreadable"})
+                    filtered_count += 1
+                    continue
+
+                if "_reject" in features:
+                    audit_rows.append({"filename": rel_path, "season": season, "split": split_name, "status": features["_reject"]})
+                    filtered_count += 1
+                    continue
+
+                passed, reason = check_quality(cv2.imread(path), features["L_mean"], features["S_mean"])
+                if not passed:
+                    audit_rows.append({"filename": rel_path, "season": season, "split": split_name, "status": reason})
+                    filtered_count += 1
+                    continue
+
+                row = {"filename": rel_path, "season": season, "label": LABEL_MAP[season], "split": split_name}
+                row.update(features)
+                rows.append(row)
+                audit_rows.append({"filename": rel_path, "season": season, "split": split_name, "status": "ok"})
+                saved_count += 1
+
+            log.info(f"      kept: {saved_count}  filtered: {filtered_count}")
 
     if len(rows) == 0:
         log.error("\nNo images passed quality filtering.")
-        log.error("Check that dataset/ folders exist and contain valid images.")
-        log.error("Run collectdata.py first.")
+        log.error(f"Check that {TRAIN_DIR}/ and {TEST_DIR}/ exist and contain images.")
         return
 
     # ── Step 2: Build DataFrame + save features.csv ────────────────────
@@ -358,7 +331,7 @@ def run():
         "L_mean", "a_mean", "b_mean", "L_std", "a_std", "b_std",
         "ITA", "H_mean", "S_mean", "V_mean", "skin_ratio", "blur_score"
     ]
-    df = pd.DataFrame(rows, columns=["filename", "season", "label"] + feature_cols)
+    df = pd.DataFrame(rows, columns=["filename", "season", "label", "split"] + feature_cols)
     df.to_csv(FEATURES_CSV, index=False)
     log.info(f"  Saved: {FEATURES_CSV} ({len(df)} rows)")
 
@@ -388,25 +361,8 @@ def run():
         pickle.dump(scaler, f)
     log.info(f"  Scaler saved: {SCALER_PATH}")
 
-    # ── Step 4: Assign train/test split ──────────────────────────────────────
-    partition_map = get_armocromia_partition(df["filename"].tolist())
-
-    if partition_map:
-        log.info("\n[Step 4] Using Deep Armocromia pre-defined train/test partition...")
-        df["split"] = df["filename"].map(partition_map)
-        # Any image not in annotations.csv defaults to train
-        df["split"] = df["split"].fillna("train")
-        # Normalize: anything that's not "test" becomes "train"
-        df["split"] = df["split"].apply(lambda s: "test" if str(s).strip().lower() == "test" else "train")
-    else:
-        log.info("\n[Step 4] Stratified 80/20 split (follows Deep Armocromia paper)...")
-        train_idx, test_idx = train_test_split(
-            np.arange(len(df)), test_size=TEST_SIZE,
-            stratify=df["season"].values, random_state=RANDOM_STATE
-        )
-        df["split"] = "test"
-        df.loc[train_idx, "split"] = "train"
-
+    # ── Step 4: Split is determined by folder structure (RGB-M/train vs RGB-M/test) ──
+    log.info("\n[Step 4] Using Deep Armocromia pre-defined train/test split...")
     train_idx = df.index[df["split"] == "train"].tolist()
     test_idx  = df.index[df["split"] == "test"].tolist()
 
@@ -416,7 +372,6 @@ def run():
         te = len(df[(df["season"] == season) & (df["split"] == "test")])
         log.info(f"    {season:<8}: {tr} train / {te} test")
 
-    # Save data_split.csv — used by train_farl.py and train_dinov2.py
     split_df = df[["filename", "season", "split"]].copy()
     split_df.to_csv(SPLIT_CSV, index=False)
     log.info(f"  Saved: {SPLIT_CSV}")
@@ -446,12 +401,12 @@ def run():
     log.info(f"  Training samples       : {len(train_idx)}")
     log.info(f"  Test samples           : {len(test_idx)}")
     log.info(f"\n  Key outputs:")
-    log.info(f"    {SPLIT_CSV}  ← used by train_farl.py / train_dinov2.py")
-    log.info(f"    {FEATURES_CSV}")
+    log.info(f"    {FEATURES_CSV}  <- EDA feature table")
+    log.info(f"    {SPLIT_CSV}     <- EDA split reference")
     log.info(f"    {AUDIT_CSV}")
-    log.info(f"    X_train.npy, X_test.npy (EDA only)")
+    log.info(f"    X_train.npy, X_test.npy  <- EDA numpy arrays")
     log.info(f"    {SCALER_PATH}")
-    log.info(f"\n  Next step → run: python train_farl.py  OR  python train_dinov2.py")
+    log.info(f"\n  Next step: run  python train_farl.py  OR  python train_dinov2.py")
     log.info("=" * 65)
 
 if __name__ == "__main__":

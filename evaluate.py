@@ -8,25 +8,21 @@ Usage:
     python evaluate.py
 
 Requires:
-    - models/farl_model.pth   (from train_farl.py)
+    - models/farl_model.pth    (from train_farl.py)
     - models/dinov2_model.pth  (from train_dinov2.py)
-    - data_split.csv           (from preprocess.py)
-    - dataset/                 (spring/summer/autumn/winter)
+    - RGB-M/test/              (READ ONLY — loaded via ImageFolder)
 """
 
 import os
-import json
 import logging
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 import seaborn as sns
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 from torchvision import transforms
-from PIL import Image
 from sklearn.metrics import (
     classification_report,
     confusion_matrix,
@@ -36,24 +32,23 @@ from sklearn.metrics import (
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
 
-DATASET_DIR   = "dataset"
+TEST_DIR      = "RGB-M/test"   # READ ONLY — ImageFolder reads sub-types recursively
 MODELS_DIR    = "models"
 RESULTS_DIR   = "results"
-SPLIT_CSV     = "data_split.csv"
 
 FARL_PATH     = os.path.join(MODELS_DIR, "farl_model.pth")
 DINOV2_PATH   = os.path.join(MODELS_DIR, "dinov2_model.pth")
 
-SEASONS       = ["spring", "summer", "autumn", "winter"]
-LABEL_MAP     = {"spring": 0, "summer": 1, "autumn": 2, "winter": 3}
+SEASONS       = ["autumn", "spring", "summer", "winter"]  # alphabetical — ImageFolder order
+LABEL_MAP     = {"autumn": 0, "spring": 1, "summer": 2, "winter": 3}
 BATCH_SIZE    = 64
 IMG_SIZE      = 224
 
 # Paper baselines from Stacchio et al. (2024) Table 2
 PAPER_BASELINES = {
-    "FaRL16 (paper)":    {"accuracy": 0.525, "f1": 0.519},
-    "FaRL64 (paper)":    {"accuracy": 0.554, "f1": 0.548},
-    "ResNeXt50 (paper)": {"accuracy": 0.513, "f1": 0.502},
+    "FaRL16 (paper)":    {"accuracy": 0.525, "f1": 0.516, "top2": 0.815},
+    "FaRL64 (paper)":    {"accuracy": 0.554, "f1": 0.548, "top2": 0.808},
+    "ResNeXt50 (paper)": {"accuracy": 0.513, "f1": 0.502, "top2": 0.789},
 }
 
 # ── LOGGING ────────────────────────────────────────────────────────────────────
@@ -71,27 +66,6 @@ os.makedirs(RESULTS_DIR, exist_ok=True)
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # ── DATASET ────────────────────────────────────────────────────────────────────
-
-class TestDataset(Dataset):
-    def __init__(self, split_csv, transform):
-        df = pd.read_csv(split_csv)
-        self.df = df[df["split"] == "test"].reset_index(drop=True)
-        self.transform = transform
-        log.info(f"  Test set: {len(self.df)} images")
-        for s in SEASONS:
-            n = len(self.df[self.df["season"] == s])
-            log.info(f"    {s:<8}: {n}")
-
-    def __len__(self):
-        return len(self.df)
-
-    def __getitem__(self, idx):
-        row = self.df.iloc[idx]
-        path = os.path.join(DATASET_DIR, row["season"], row["filename"])
-        img = Image.open(path).convert("RGB")
-        label = LABEL_MAP[row["season"]]
-        return self.transform(img), label
-
 
 TEST_TRANSFORM = transforms.Compose([
     transforms.Resize(256),
@@ -327,12 +301,18 @@ def run():
     log.info("=" * 65)
     log.info(f"  Device: {DEVICE}")
 
-    if not os.path.exists(SPLIT_CSV):
-        log.error(f"  {SPLIT_CSV} not found. Run preprocess.py first.")
+    if not os.path.isdir(TEST_DIR):
+        log.error(f"  {TEST_DIR} not found. Check that RGB-M/test/ exists.")
         return
 
     log.info("\n[Step 1] Loading test set...")
-    test_ds = TestDataset(SPLIT_CSV, TEST_TRANSFORM)
+    from torchvision.datasets import ImageFolder
+    test_ds = ImageFolder(root=TEST_DIR, transform=TEST_TRANSFORM)
+    log.info(f"  Test set: {len(test_ds)} images")
+    from collections import Counter
+    counts = Counter(label for _, label in test_ds.samples)
+    for i, s in enumerate(SEASONS):
+        log.info(f"    {s:<8}: {counts[i]}")
     test_loader = DataLoader(test_ds, batch_size=BATCH_SIZE,
                              shuffle=False, num_workers=0)
 

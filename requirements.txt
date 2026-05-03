@@ -1,13 +1,35 @@
-streamlit
-torch
-torchvision
+# ToneFit ML — Python dependencies
+# Install with: pip install -r requirements.txt
+# Tested on Python 3.10+ | Compatible with Google Colab T4
+
+# Deep learning
+torch>=2.0.0
+torchvision>=0.15.0
 timm>=0.9.0
-opencv-python-headless
-scikit-image
-numpy
-pillow
-scikit-learn
-matplotlib
-seaborn
-pandas
-imagehash
+
+# Computer vision
+# opencv-python-headless is preferred for Colab/servers (no GUI dependencies)
+opencv-python-headless>=4.7.0
+Pillow>=9.5.0
+
+# Data science
+numpy>=1.24.0
+pandas>=2.0.0
+scikit-learn>=1.2.0
+scikit-image>=0.21.0
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Web app
+streamlit>=1.24.0
+
+# Image utilities
+imagehash>=4.3.0
+
+# Face landmark extraction (used in preprocess.py for skin region masking)
+mediapipe>=0.10.0
+
+# Data collection only — not needed for training or the app
+icrawler>=0.6.6

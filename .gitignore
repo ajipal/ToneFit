@@ -16,10 +16,8 @@ data_split.csv
 *.npy
 
 # Dataset images (managed separately — Deep Armocromia via Google Drive)
-dataset/spring/
-dataset/summer/
-dataset/autumn/
-dataset/winter/
+dataset/
+RGB-M/
 
 # Jupyter checkpoints
 .ipynb_checkpoints/

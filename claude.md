@@ -1,257 +1,462 @@
 # CLAUDE.md — ToneFit ML Project Brief
 
-This file briefs Claude Code on everything about this project.
-Read this fully before doing anything.
+Read this fully before doing anything. This is the single source of truth.
 
 ---
 
 ## What This Project Is
 
-ToneFit ML is a **pilot study** for a Data Science class at PUP (Polytechnic University of the Philippines).
+ToneFit ML is a pilot study for a Data Science / Current Trends in IT class at PUP Manila.
 
-The goal is to build and compare machine learning models that:
-1. Take a facial image as input
-2. Predict the user's **personal color season** (Spring / Summer / Autumn / Winter)
-3. Output a **clothing color palette** that suits that season
-4. Show **sample outfit photos** for that season
-
-This is based on **Korean personal color analysis** — a widely practiced beauty methodology that classifies people into 4 seasons based on skin tone, undertone, and contrast level.
+Goals:
+1. Compare FaRL (face-specialized Vision Transformer) vs DINOv2 (general self-supervised ViT) for personal color season classification
+2. Evaluate both models using accuracy, precision, recall, F1-score, confusion matrix
+3. Build a working Streamlit app where a user takes a photo and gets season prediction + clothing/accessory/makeup recommendations
 
 ---
 
 ## Personal Color Season System
 
-| Season | Undertone | Features | Best Colors |
-|--------|-----------|----------|-------------|
-| Spring | Warm | Light, clear, peachy skin | Peach, coral, warm turquoise, gold |
-| Summer | Cool | Light, muted, ashy skin | Lavender, dusty rose, powder blue |
-| Autumn | Warm | Deep, muted, earthy skin | Rust, olive, camel, burnt orange |
-| Winter | Cool | Deep, clear, high contrast | Black, white, jewel tones, royal blue |
+| Season | Undertone | Features |
+|--------|-----------|----------|
+| Spring | Warm | Light, clear, peachy |
+| Summer | Cool | Light, muted, ashy |
+| Autumn | Warm | Deep, muted, earthy |
+| Winter | Cool | Deep, clear, high contrast |
 
-**Key rule:** Spring and Autumn = Warm undertone. Summer and Winter = Cool undertone. There is no "Winter Warm" in the 4-season system.
+Rule: Spring + Autumn = Warm. Summer + Winter = Cool. No Winter Warm exists.
 
 ---
 
-## Project Scope (What We Are and Are NOT Building)
+## Final Confirmed Decisions
 
-### ✅ We ARE building:
-- Automated face detection from uploaded photo
-- CIELab + HSV color feature extraction from face region (for EDA)
-- FaRL (Face Representation Learning) ViT-Base classifier (Model A)
-- DINOv2 ViT-Base classifier (Model B)
-- Season prediction with confidence score from both models (ensemble)
-- Color palette display per season
-- Side-by-side outfit sample photo display (pre-curated, not virtual try-on)
-- Streamlit web app (deployable on Streamlit Cloud)
+- Dataset: Deep Armocromia (Stacchio et al., ECCV 2024) — already downloaded, already split
+- Model A: FaRL (Face Representation Learning — Microsoft, face-specialized ViT)
+- Model B: DINOv2 (Meta AI, general self-supervised ViT)
+- Comparison: Both Vision Transformers — same category, fair comparison
+- Classifier head: FC(dim//2) → ReLU → Dropout(0.5) → FC(4) — same for both
+- Training: AdamW(lr=1e-3, weight_decay=1e-5), CosineAnnealingWarmRestarts(T_0=10, eta_min=1e-5), 50 epochs, batch_size=64
+- Fallback: If FaRL setup fails → use ResNeXt50 from torchvision
+- Deployment: Streamlit web app on Streamlit Cloud
 
-### ❌ We are NOT building:
-- SVM / Random Forest traditional ML models
-- Virtual try-on or body warping
+---
+
+## What is NOT in scope
+
+- SVM, Random Forest, or any traditional ML models
+- Virtual try-on or generative image editing
 - 12-tone sub-season classification
-- Real-time video analysis
-- A deployed production app (prototype only)
+- Custom CNN from scratch
+- Celebrity scraped dataset (replaced by Deep Armocromia)
 
 ---
 
-## Dataset
+## Dataset Structure (READ ONLY — DO NOT MODIFY)
 
-### Self-Collected Celebrity Dataset
-Face images of celebrities with publicly documented personal color seasons.
-Labels come from professional color analyst diagnoses published online — NOT guessed by the team.
-
-**Current status:** ~952 raw images collected (spring=254, summer=211, autumn=244, winter=243).
-Expect ~570 usable images after manual cleaning (40% loss estimate).
-
-**Structure:**
-```
-dataset/
-  spring/    → face images (224x224 px, cropped)
-  summer/    → face images
-  autumn/    → face images
-  winter/    → face images
-```
-
-**Celebrity breakdown per season:**
-
-Spring (15 celebrities):
-- Filipino: Anne Curtis, Julia Barretto, Marian Rivera, James Reid
-- Korean: IU, Yoona, Kim Chaewon, Kim Soo-hyun, Jung Hae-in, Felix (Stray Kids)
-- Western: Chris Hemsworth, Pedro Pascal, Sterling K. Brown, Emma Stone, Ariana Grande
-
-Summer (15 celebrities):
-- Filipino: Jodi Sta. Maria, Janine Gutierrez, Shaina Magdayao, Richard Gutierrez, Matteo Guidicelli
-- Korean: Son Ye-jin, Irene (Red Velvet), Jang Wonyoung, Taeyeon, Cha Eunwoo, Jimin (BTS)
-- Western: Taylor Swift, Nicole Kidman, Robert Pattinson, Timothée Chalamet
-
-Autumn (15 celebrities):
-- Filipino: Kathryn Bernardo, Nadine Lustre, Gabbi Garcia, Coleen Garcia, Liza Soberano, Piolo Pascual, Daniel Padilla, Enrique Gil, Coco Martin, Joshua Garcia
-- Korean: Jennie (BLACKPINK), Jaehyun (NCT), V/Taehyung (BTS)
-- Western: Beyoncé, Oscar Isaac
-
-Winter (15 celebrities):
-- Filipino: Heart Evangelista, Pia Wurtzbach, Alden Richards, Dingdong Dantes, Paulo Avelino, Xian Lim, Donny Pangilinan
-- Korean: Jisoo (BLACKPINK), Suga/Yoongi (BTS), Jin (BTS), Hyun Bin, Song Hye-kyo
-- Western: Megan Fox, Dua Lipa, Keanu Reeves
-
-### Deep Armocromia Dataset (Primary / Supplement)
-Download from: https://github.com/lorenzo-stacchio/Deep-Armocromia
-~4,920 expert-labeled face images (Spring/Summer/Autumn/Winter), ECCV 2024 paper dataset.
-Add to the corresponding season folders after downloading.
-
----
-
-## Full Pipeline (Steps in Order)
-
-### Step 1 — Data Collection (`collectdata.py`) ✅ DONE
-- Uses BingImageCrawler to scrape images for each celebrity
-- Applies OpenCV Haar Cascade face detector
-- Crops and saves 224x224 face images per season folder
-- Result: ~952 images across 4 seasons
-
-### Step 2 — Preprocessing (`preprocess.py`) ✅ DONE
-- Remove duplicates (perceptual hashing)
-- Convert images to CIELab and HSV color spaces
-- Extract features per image:
-  - L* mean, a* mean, b* mean (CIELab)
-  - L* std, a* std, b* std
-  - ITA score: arctan((L* - 50) / b*) × (180/π)
-  - Hue mean, Saturation mean, Value mean (HSV)
-- Save features to CSV: `features.csv`
-- Save train/test split manifest: `data_split.csv` (columns: filename, season, split)
-- Split: 80% train / 20% test (stratified, random_state=42) — follows Deep Armocromia paper
-- Save: `X_train.npy`, `X_test.npy`, `y_train.npy`, `y_test.npy` (EDA use only)
-
-### Step 3 — EDA (`eda.ipynb`) 🔲 TODO
-- Class distribution bar chart
-- Sample face images per season (grid)
-- Feature distributions (boxplots of L*, a*, b* per season)
-- Correlation heatmap of features
-- PCA visualization (2D scatter, colored by season)
-
-### Step 4 — FaRL Training (`train_farl.py`) 🔲 TODO
-- Load ViT-Base via timm, apply FaRL pretrained weights from `models/farl_weights.pth`
-- Fallback: ResNeXt50 from torchvision if FaRL weights not found
-- Classifier head: FC(384) → ReLU → Dropout(0.5) → FC(4)
-- Optimizer: AdamW(lr=1e-3, weight_decay=1e-5)
-- Scheduler: CosineAnnealingWarmRestarts(T_0=10, eta_min=1e-5)
-- 50 epochs, batch_size=64, early stopping
-- Save: `models/farl_model.pth`, `results/farl_history.json`, `results/farl_training.png`
-
-### Step 5 — DINOv2 Training (`train_dinov2.py`) 🔲 TODO
-- Load via torch.hub: `facebookresearch/dinov2`, `dinov2_vitb14` (feature_dim=768)
-- Same classifier head, optimizer, scheduler, and epoch settings as FaRL
-- Save: `models/dinov2_model.pth`, `results/dinov2_history.json`, `results/dinov2_training.png`
-
-### Step 6 — Evaluation (`evaluate.py`) 🔲 TODO
-- Load both FaRL and DINOv2 models (gracefully skip missing)
-- Compute: accuracy, top-2 accuracy, macro/weighted F1, per-season recall
-- Generate confusion matrices per model
-- Compare against paper baselines:
-  - FaRL16: 0.525 accuracy | FaRL64: 0.554 accuracy | ResNeXt50: 0.513 accuracy
-- Save: `results/comparison_table.csv`, `results/model_comparison.png`
-
-### Step 7 — Streamlit App (`app.py`) 🔲 TODO
-- st.file_uploader + st.camera_input tabs
-- OpenCV Haar Cascade face detection
-- Load both FaRL and DINOv2 with @st.cache_resource
-- Final prediction = argmax of averaged confidences from both models
-- Recommendation tabs: Color Palette, Outfits, Accessories, Makeup
-- Load outfit photos from `outfits/{season}/` if present
-
----
-
-## Professor's Required Outline
-
-The final paper must follow this structure:
-1. Introduction (context, motivation, gap/problem)
-2. Objectives & Research Questions
-3. Significance
-4. Scope and Delimitation
-5. Related Works
-6. Methodology
-   - Data Acquisition (source, collection steps, tools)
-   - Data Preprocessing (cleaning, feature extraction, transformation)
-   - Feature Engineering (binning, encoding, selection)
-   - Data Split
-   - Model Development (classifiers, validation)
-   - Model Performance Metrics
-   - Model Testing
-   - Model Evaluation
-7. Results and Discussion
-8. Conclusion and Recommendation
-9. References (APA format)
-
----
-
-## Important Academic Notes
-
-- **Labeling methodology:** Season labels sourced from publicly documented celebrity color analysis diagnoses. Not self-assigned. Cite as: "ground truth labels derived from professionally documented personal color diagnoses available in public Korean beauty resources and color analysis communities."
-- **Labeling limitation:** Labels rely on existing analyst consensus, not independent expert verification. Acknowledge in paper.
-- **Class imbalance:** Filipino celebrities skew heavily toward Autumn and Winter. Address using class_weight='balanced' in SVM/RF and class_weight in Keras.
-- **ITA score:** Key feature — Individual Typology Angle. Formula: `ITA = arctan((L* - 50) / b*) × (180/π)`. Higher ITA = lighter/cooler skin. Lower ITA = darker/warmer skin.
-- **CIELab color space** is the primary feature space — consistent with Korean skin tone classification literature (Kye & Lee, 2022; Soonchunhyang University, 2023).
-- **Autumn is historically the hardest class to predict** in existing studies (ColorInsight, 2023). Track Autumn recall separately.
-- **Paper baselines (Deep Armocromia, Stacchio et al. ECCV 2024):** FaRL64=0.554, ResNeXt50=0.513 — these are the benchmarks to compare against.
-
----
-
-## Tech Stack
+The Deep Armocromia dataset is already downloaded and split.
+Location: RGB-M/ folder in the workspace root.
 
 ```
-Python 3.10+
-torch / torchvision      # FaRL, DINOv2, deep learning
-timm>=0.9.0              # ViT-Base model loading for FaRL
-opencv-python            # face detection, image processing
-scikit-learn             # preprocessing, metrics
-scikit-image             # CIELab color conversion
-pandas                   # data handling
-numpy                    # array operations
-matplotlib               # plotting
-seaborn                  # heatmaps, visualizations
-streamlit                # web app interface
-imagehash                # duplicate detection
-pillow                   # image I/O
-icrawler                 # Bing Image scraping (data collection only)
+RGB-M/
+  train/
+    autumn/
+      deep/     ← sub-type (treat all as class: autumn)
+      soft/
+      warm/
+    spring/
+      bright/
+      light/
+      warm/
+    summer/
+      cool/
+      light/
+      soft/
+    winter/
+      bright/
+      cool/
+      deep/
+  test/
+    autumn/
+      deep/
+      soft/
+      warm/
+    spring/
+      bright/
+      light/
+      warm/
+    summer/
+      cool/
+      light/
+      soft/
+    winter/
+      bright/
+      cool/
+      deep/
+```
+
+**CRITICAL RULES for dataset:**
+1. RGB-M is READ ONLY — never move, copy, delete, or modify any files inside
+2. Use RGB-M only
+3. Train/test split is already done — use it exactly as-is, do NOT re-split
+4. When loading images, read RECURSIVELY through sub-type subfolders (deep, soft, warm, etc.)
+5. Treat ALL images under a season folder as the same class label — ignore sub-type distinctions
+6. Do NOT create merge_dataset.py or any script that modifies dataset folders
+
+**Loading images correctly:**
+```python
+# CORRECT — recursive loading, treats sub-types as same class
+from torchvision.datasets import ImageFolder
+from torchvision import transforms
+
+train_dataset = ImageFolder(
+    root='RGB-M/train',
+    transform=train_transforms
+)
+# ImageFolder automatically reads recursively
+# autumn/deep/, autumn/soft/, autumn/warm/ → all labeled as "autumn"
+```
+
+**Class label mapping (ImageFolder alphabetical order):**
+- autumn = 0
+- spring = 1
+- summer = 2
+- winter = 3
+
+---
+
+## Full Pipeline
+
+### Step 1 — Preprocessing (preprocess.py) ✅ EXISTS — UPDATE PATHS
+- Load images from RGB-M/train/ recursively
+- Extract CIELab/HSV features for EDA ONLY (not model input)
+- Features: L_mean, a_mean, b_mean, L_std, a_std, b_std, ITA, H_mean, S_mean, V_mean
+- ITA formula: arctan((L_mean - 50) / b_mean) × (180/π)
+- Save to features.csv
+- Save data_split.csv (filename, season, split) based on RGB-M train/test folders
+- DO NOT copy or move any images
+
+### Step 2 — EDA (eda.ipynb)
+- Class distribution per season
+- Sample face images per season
+- CIELab/HSV feature distributions per season
+- ITA score boxplot per season
+- PCA scatter plot
+- Correlation heatmap
+
+### Step 3 — Model A: FaRL (train_farl.py) ✅ EXISTS — UPDATE PATHS
+Load FaRL as frozen feature extractor:
+```python
+import timm
+import torch
+
+model = timm.create_model('vit_base_patch16_224', pretrained=False, num_classes=0)
+checkpoint = torch.load('models/farl_weights.pth', map_location='cpu')
+state_dict = checkpoint.get('state_dict', checkpoint.get('model', checkpoint))
+state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}
+model.load_state_dict(state_dict, strict=False)
+model.eval()
+for param in model.parameters():
+    param.requires_grad = False
+feature_dim = 768
+```
+
+Classifier head:
+```python
+classifier = nn.Sequential(
+    nn.Linear(768, 384),
+    nn.ReLU(),
+    nn.Dropout(0.5),
+    nn.Linear(384, 4)
+)
+```
+
+Training:
+- Load training images from: RGB-M/train/ (recursive)
+- Test on: RGB-M/test/ (final evaluation)
+- AdamW(lr=1e-3, weight_decay=1e-5)
+- CosineAnnealingWarmRestarts(T_0=10, eta_min=1e-5)
+- 50 epochs, batch_size=64
+- CrossEntropyLoss
+- Data augmentation: random crop, horizontal flip (p=0.5), color jitter (brightness=0.4, contrast=0.2, saturation=0.2), random sharpness (factor=2, p=0.2)
+- Save: models/farl_model.pth
+- Save history: results/farl_history.json
+- Plot: results/farl_training.png
+
+FALLBACK if FaRL weights not found:
+```python
+from torchvision import models
+backbone = models.resnext50_32x4d(pretrained=True)
+feature_dim = 2048
+```
+
+### Step 4 — Model B: DINOv2 (train_dinov2.py) ✅ EXISTS — UPDATE PATHS
+Load DINOv2 as frozen feature extractor:
+```python
+import torch
+backbone = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14')
+for param in backbone.parameters():
+    param.requires_grad = False
+feature_dim = 768
+```
+
+Same classifier head, same training settings as FaRL.
+- Load from: RGB-M/train/ (recursive)
+- Test on: RGB-M/test/
+- Save: models/dinov2_model.pth
+- Save history: results/dinov2_history.json
+- Plot: results/dinov2_training.png
+
+### Step 5 — Evaluation (evaluate.py) ✅ EXISTS — UPDATE PATHS
+- Load test images from RGB-M/test/ (recursive)
+- Load both models
+- Per model: accuracy, weighted precision, recall, F1
+- Per-class recall (especially autumn)
+- Top-2 accuracy
+- Confusion matrix heatmap
+- Training time comparison
+- Output comparison table including paper baselines:
+
+| Model | Source | Accuracy | F1 |
+|-------|--------|---------|-----|
+| FaRL16 | Stacchio et al. (2024) | 0.525 | 0.516 |
+| FaRL64 | Stacchio et al. (2024) | 0.554 | 0.548 |
+| ResNeXt50 | Stacchio et al. (2024) | 0.513 | 0.502 |
+| FaRL (ours) | This study | TBD | TBD |
+| DINOv2 (ours) | This study | TBD | TBD |
+
+- Save: results/comparison_table.csv
+- Save: results/confusion_farl.png, results/confusion_dinov2.png
+- Save: results/model_comparison.png
+
+### Step 6 — Streamlit App (app.py) ✅ EXISTS
+- st.camera_input OR st.file_uploader
+- Face detection (OpenCV Haar Cascade)
+- Load best performing model
+- Show confidence scores from BOTH models
+- Display per predicted season:
+  - Season name + undertone description
+  - Color palette swatches (best + avoid)
+  - Outfit reference photos from outfits/{season}/
+  - Accessory recommendations
+  - Makeup tips
+
+---
+
+## Season Recommendation Data
+
+```python
+SEASON_DATA = {
+    "autumn": {
+        "emoji": "🍂",
+        "undertone": "Warm · Deep · Muted",
+        "best_colors": ["Rust", "Olive Green", "Camel", "Burnt Orange", "Chocolate Brown", "Mustard"],
+        "best_hex": ["#B7410E", "#708238", "#C19A6B", "#CC5500", "#7B3F00", "#E1AD01"],
+        "avoid_colors": ["Icy blue", "Cool pink", "Stark white", "Electric neon"],
+        "metals": "Gold, Bronze, Antique Gold",
+        "outfits": {
+            "casual": "Olive green tee, rust jeans, camel jacket",
+            "smart_casual": "Burnt orange blouse with chocolate brown trousers",
+            "formal": "Deep emerald gown, rich burgundy suit"
+        },
+        "accessories": {
+            "bags": "Camel leather, tan suede, chocolate brown tote",
+            "sunglasses": "Tortoiseshell, warm brown frames, amber lens",
+            "jewelry": "Gold, bronze, amber stones, wooden accents",
+            "scarves": "Rust wool, olive plaid, warm terracotta"
+        },
+        "makeup": {
+            "foundation": "Warm/golden undertone foundation",
+            "lips": "Brick red, terracotta, warm brown, deep rust",
+            "blush": "Warm peach, terracotta, copper",
+            "eyeshadow": "Warm brown, bronze, copper, olive gold"
+        }
+    },
+    "spring": {
+        "emoji": "🌸",
+        "undertone": "Warm · Light · Clear",
+        "best_colors": ["Peach", "Coral", "Warm Turquoise", "Gold", "Ivory", "Light Salmon"],
+        "best_hex": ["#FFDAB9", "#FF7F50", "#40E0D0", "#FFD700", "#FFFFF0", "#FA8072"],
+        "avoid_colors": ["Cool gray", "Icy blue", "Stark black", "Cool purple"],
+        "metals": "Gold, Rose Gold",
+        "outfits": {
+            "casual": "Light floral prints, peach tones, warm whites",
+            "smart_casual": "Coral blouse with cream trousers, warm beige blazer",
+            "formal": "Champagne gold gown, warm ivory suit"
+        },
+        "accessories": {
+            "bags": "Tan leather, warm beige, camel tote",
+            "sunglasses": "Gold frames, warm tortoiseshell, brown lens",
+            "jewelry": "Gold chains, pearl accents, rose gold rings",
+            "scarves": "Warm peach silk, ivory floral print"
+        },
+        "makeup": {
+            "foundation": "Warm/yellow undertone foundation",
+            "lips": "Peach, coral, warm pink, salmon",
+            "blush": "Peach, apricot, warm rose",
+            "eyeshadow": "Warm brown, bronze, champagne gold"
+        }
+    },
+    "summer": {
+        "emoji": "☁️",
+        "undertone": "Cool · Light · Muted",
+        "best_colors": ["Lavender", "Dusty Rose", "Powder Blue", "Sage Green", "Mauve", "Soft Gray"],
+        "best_hex": ["#E6E6FA", "#DCB4B4", "#B0C4DE", "#B2C2B0", "#E0B0C8", "#D3D3D3"],
+        "avoid_colors": ["Warm orange", "Mustard yellow", "Olive green", "Bright neon"],
+        "metals": "Silver, White Gold, Platinum",
+        "outfits": {
+            "casual": "Dusty rose top, soft gray jeans, powder blue linen",
+            "smart_casual": "Mauve blazer with light gray trousers, lavender blouse",
+            "formal": "Dusty blue gown, soft lavender suit"
+        },
+        "accessories": {
+            "bags": "Soft gray leather, dusty rose, pale blue",
+            "sunglasses": "Silver frames, gray-blue lens, cool tortoiseshell",
+            "jewelry": "Silver, white gold, moonstone, pearl",
+            "scarves": "Lavender silk, soft gray cashmere"
+        },
+        "makeup": {
+            "foundation": "Cool/pink undertone foundation",
+            "lips": "Mauve, berry, cool pink, rose",
+            "blush": "Cool pink, soft rose, berry",
+            "eyeshadow": "Cool taupe, mauve, soft lavender, gray"
+        }
+    },
+    "winter": {
+        "emoji": "❄️",
+        "undertone": "Cool · Deep · Clear",
+        "best_colors": ["True White", "Black", "Royal Blue", "Crimson", "Emerald", "Dark Magenta"],
+        "best_hex": ["#FFFFFF", "#000000", "#4169E1", "#DC143C", "#50C878", "#8B008B"],
+        "avoid_colors": ["Warm brown", "Mustard", "Dusty pastels", "Warm beige"],
+        "metals": "Silver, Platinum, Cool White Gold",
+        "outfits": {
+            "casual": "Black tee, crisp white jeans, royal blue jacket",
+            "smart_casual": "Emerald green top with black trousers, cobalt blazer",
+            "formal": "Stark white or black gown, jewel-tone suit"
+        },
+        "accessories": {
+            "bags": "Black leather, crisp white, deep navy",
+            "sunglasses": "Black frames, silver hardware, dark lens",
+            "jewelry": "Silver, platinum, sapphire, diamond",
+            "scarves": "Black cashmere, white silk, royal blue wool"
+        },
+        "makeup": {
+            "foundation": "Cool/neutral undertone foundation",
+            "lips": "True red, berry, deep plum, cool pink",
+            "blush": "Cool pink, berry, soft rose",
+            "eyeshadow": "Cool gray, navy, silver, deep plum"
+        }
+    }
+}
 ```
 
 ---
 
-## File Naming Conventions
+## File Structure
 
-- Processed face crops: `dataset/[season]/[season]_[celebrity_name]_[number].jpg`
-- Data split manifest: `data_split.csv` — columns: filename, season, split
-- Feature CSV: `features.csv` — columns: filename, season, label, L_mean, a_mean, b_mean, L_std, a_std, b_std, ITA, H_mean, S_mean, V_mean
-- Models: `models/farl_model.pth`, `models/dinov2_model.pth`
-- Scaler: `models/scaler.pkl`
-- Results: `results/comparison_table.csv`, `results/confusion_matrix_[model].png`
+```
+ToneFit/                     ← main project folder
+├── app.py                   ← Streamlit app
+├── collectdata.py           ← supplemental data collection (not used now)
+├── preprocess.py            ← feature extraction + EDA prep
+├── train_farl.py            ← Model A training
+├── train_dinov2.py          ← Model B training
+├── evaluate.py              ← model comparison
+├── eda.ipynb                ← EDA notebook
+├── ToneFit_Colab.ipynb      ← Colab notebook
+├── requirements.txt
+├── README.md
+├── CLAUDE.md
+├── models/                  ← saved model weights (created at runtime)
+│   ├── farl_weights.pth     ← FaRL pretrained weights (download separately)
+│   ├── farl_model.pth       ← trained FaRL classifier
+│   └── dinov2_model.pth     ← trained DINOv2 classifier
+├── results/                 ← evaluation outputs (created at runtime)
+└── outfits/                 ← curated outfit photos
+    ├── autumn/
+    ├── spring/
+    ├── summer/
+    └── winter/
+
+RGB-M/                       ← dataset (READ ONLY)
+  train/
+    autumn/  summer/  winter/  spring/
+    (each season has sub-type subfolders — treat all as same class)
+  test/
+    autumn/  summer/  winter/  spring/
+```
+
+---
+
+## requirements.txt
+
+```
+streamlit
+torch
+torchvision
+timm>=0.9.0
+opencv-python-headless
+scikit-image
+numpy
+pillow
+scikit-learn
+matplotlib
+seaborn
+pandas
+imagehash
+```
+
+---
+
+## Evaluation Paper Baselines
+
+From Stacchio et al. (2024) Table 2 — use these as reference in evaluate.py output:
+- FaRL16: accuracy=0.525, F1=0.516, Top-2=0.815
+- FaRL64: accuracy=0.554, F1=0.548, Top-2=0.808
+- ResNeXt50: accuracy=0.513, F1=0.502, Top-2=0.789
+
+Expected autumn confusion: 80 samples misclassified as winter (per paper confusion matrix)
+
+---
+
+## Academic Notes
+
+- Gap: No study has evaluated DINOv2 on Deep Armocromia or compared it against FaRL
+- Novelty: First FaRL vs DINOv2 comparison on Deep Armocromia dataset
+- Autumn: Expected hardest class — track separately, cite paper confusion matrix
+- Do NOT mention: AWS AI Stylist, Filipino focus as primary, dataset validation problems
+- Cite Deep Armocromia paper for all baseline numbers
 
 ---
 
 ## Current Status
 
-- [x] Project proposal written
-- [x] Celebrity list verified (60 celebrities across 4 seasons)
-- [x] Data collection script written (`collectdata.py`)
-- [x] Dataset collected (~952 images)
-- [ ] Manual dataset cleaning (team reviews each season folder, deletes wrong-person images)
-- [ ] Deep Armocromia dataset downloaded and merged
-- [x] Preprocessing script written (`preprocess.py`)
-- [ ] Preprocessing run (run after cleaning)
-- [ ] EDA notebook written (`eda.ipynb`)
-- [x] FaRL training script written (`train_farl.py`)
-- [x] DINOv2 training script written (`train_dinov2.py`)
-- [x] Evaluation script written (`evaluate.py`)
-- [x] Streamlit app written (`app.py`)
-- [ ] Models trained on Colab with T4 GPU
-- [ ] Final paper written
+- [x] FaRL setup complete
+- [x] DINOv2 setup complete
+- [x] preprocess.py written
+- [x] train_farl.py written
+- [x] train_dinov2.py written
+- [x] evaluate.py written
+- [x] app.py written
+- [x] requirements.txt created
+- [x] Dataset downloaded (RGB-M folder)
+- [x] Season folders renamed to English
+- [ ] Update all scripts to use RGB-M/train/ and RGB-M/test/ paths
+- [ ] Run preprocess.py for EDA
+- [ ] Train both models on Colab T4 GPU
+- [ ] Evaluate and compare results
+- [ ] Deploy app on Streamlit Cloud
+- [ ] Write final paper
 
 ---
 
-## When Helping With This Project
+## What Claude Code Should Do Right Now
 
-1. Always follow the pipeline order above
-2. The next steps are: manual data cleaning → run preprocess.py → train on Colab
-3. Keep code clean, well-commented, and beginner-friendly — the team is not highly technical
-4. Use Google Colab-compatible code where possible (the team will likely run on Colab)
-5. Always save intermediate outputs (CSV, .npy files, model files) so steps can be run independently
-6. When writing evaluation code, always compare both models side by side against Deep Armocromia paper baselines
+Update these 4 scripts to correctly use the RGB-M dataset:
+
+1. preprocess.py — read from RGB-M/train/ recursively, extract CIELab/HSV features to features.csv
+2. train_farl.py — load training images from RGB-M/train/, test images from RGB-M/test/
+3. train_dinov2.py — same as train_farl.py
+4. evaluate.py — load test images from RGB-M/test/, output comparison table with paper baselines
+
+DO NOT run any scripts.
+DO NOT modify any files inside RGB-M/.

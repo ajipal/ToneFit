@@ -21,14 +21,14 @@ import json
 import time
 import warnings
 import numpy as np
-import pandas as pd
-from PIL import Image
+from collections import Counter
 from pathlib import Path
 
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 from torchvision import transforms
+from torchvision.datasets import ImageFolder
 
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.metrics import classification_report, confusion_matrix
@@ -43,16 +43,16 @@ warnings.filterwarnings("ignore")
 # CONFIGURATION
 # ---------------------------------------------------------------------------
 
-DATASET_DIR   = "dataset"          # root folder with spring/summer/autumn/winter subfolders
-SPLIT_CSV     = "data_split.csv"   # columns: filename, season, split
+TRAIN_DIR     = "RGB-M/train"      # READ ONLY — ImageFolder reads sub-types recursively
+TEST_DIR      = "RGB-M/test"       # READ ONLY
 FARL_WEIGHTS  = "models/farl_weights.pth"
 MODEL_OUT     = "models/farl_model.pth"
 HISTORY_OUT   = "results/farl_history.json"
 PLOT_OUT      = "results/farl_training.png"
 REPORT_OUT    = "results/farl_test_report.txt"
 
-LABEL_MAP = {"spring": 0, "summer": 1, "autumn": 2, "winter": 3}
-SEASONS   = ["spring", "summer", "autumn", "winter"]
+LABEL_MAP = {"autumn": 0, "spring": 1, "summer": 2, "winter": 3}  # alphabetical — ImageFolder order
+SEASONS   = ["autumn", "spring", "summer", "winter"]
 
 EPOCHS      = 50
 BATCH_SIZE  = 64
@@ -74,55 +74,6 @@ print(f"[INFO] Using device: {device}")
 # ---------------------------------------------------------------------------
 # DATASET CLASS
 # ---------------------------------------------------------------------------
-
-class PersonalColorDataset(Dataset):
-    """
-    Loads face images listed in data_split.csv.
-
-    Expected CSV columns:
-        filename  — basename only (e.g. 'spring_IU_001.jpg')
-        season    — one of spring / summer / autumn / winter
-        split     — 'train' or 'test'
-
-    Images are expected at:  dataset/{season}/{filename}
-    """
-
-    def __init__(self, df: pd.DataFrame, dataset_dir: str, transform=None):
-        """
-        Args:
-            df           : filtered DataFrame (already subset to train or test)
-            dataset_dir  : root dataset directory path (string)
-            transform    : torchvision transforms to apply
-        """
-        self.df = df.reset_index(drop=True)
-        self.dataset_dir = dataset_dir
-        self.transform = transform
-
-    def __len__(self):
-        return len(self.df)
-
-    def __getitem__(self, idx):
-        row = self.df.iloc[idx]
-        season   = row["season"].strip().lower()
-        filename = row["filename"].strip()
-        label    = LABEL_MAP[season]
-
-        img_path = os.path.join(self.dataset_dir, season, filename)
-
-        # Load image — convert to RGB to handle grayscale or RGBA inputs
-        try:
-            img = Image.open(img_path).convert("RGB")
-        except FileNotFoundError:
-            raise FileNotFoundError(
-                f"Image not found: {img_path}\n"
-                f"Check that data_split.csv filename column matches actual files."
-            )
-
-        if self.transform:
-            img = self.transform(img)
-
-        return img, label
-
 
 # ---------------------------------------------------------------------------
 # DATA TRANSFORMS
@@ -420,50 +371,37 @@ def main():
     os.makedirs("results", exist_ok=True)
 
     # ------------------------------------------------------------------
-    # 2. Load data_split.csv
+    # 2. Load datasets with ImageFolder (recursive — sub-types = same class)
     # ------------------------------------------------------------------
-    print(f"\n[INFO] Loading split CSV: {SPLIT_CSV}")
-    if not os.path.exists(SPLIT_CSV):
-        raise FileNotFoundError(
-            f"'{SPLIT_CSV}' not found in the current directory.\n"
-            "Run the preprocessing step first to generate this file."
-        )
+    if not os.path.isdir(TRAIN_DIR):
+        raise FileNotFoundError(f"Training folder not found: {TRAIN_DIR}")
+    if not os.path.isdir(TEST_DIR):
+        raise FileNotFoundError(f"Test folder not found: {TEST_DIR}")
 
-    df = pd.read_csv(SPLIT_CSV)
-    # Normalise column names (strip whitespace, lowercase)
-    df.columns = [c.strip().lower() for c in df.columns]
+    train_dataset = ImageFolder(root=TRAIN_DIR, transform=train_transform)
+    test_dataset  = ImageFolder(root=TEST_DIR,  transform=val_transform)
 
-    required_cols = {"filename", "season", "split"}
-    if not required_cols.issubset(set(df.columns)):
-        raise ValueError(
-            f"data_split.csv must have columns: {required_cols}\n"
-            f"Found: {list(df.columns)}"
-        )
+    print(f"[INFO] Classes detected: {train_dataset.classes}")
+    print(f"[INFO] Train samples: {len(train_dataset)}")
+    print(f"[INFO] Test  samples: {len(test_dataset)}")
 
-    # Normalise values
-    df["season"] = df["season"].str.strip().str.lower()
-    df["split"]  = df["split"].str.strip().str.lower()
-
-    train_df = df[df["split"] == "train"].copy()
-    test_df  = df[df["split"] == "test"].copy()
-
-    print(f"[INFO] Train samples: {len(train_df)}")
-    print(f"[INFO] Test  samples: {len(test_df)}")
-
-    # Print class distribution
+    train_counts = Counter(label for _, label in train_dataset.samples)
+    test_counts  = Counter(label for _, label in test_dataset.samples)
     print("\n[INFO] Train class distribution:")
-    print(train_df["season"].value_counts().to_string())
-    print("\n[INFO] Test class distribution:")
-    print(test_df["season"].value_counts().to_string())
+    for i, s in enumerate(SEASONS):
+        print(f"  {s:<8}: {train_counts[i]}")
+    print("[INFO] Test class distribution:")
+    for i, s in enumerate(SEASONS):
+        print(f"  {s:<8}: {test_counts[i]}")
 
     # ------------------------------------------------------------------
     # 3. Compute class weights (handle imbalance)
     # ------------------------------------------------------------------
-    train_labels = train_df["season"].map(LABEL_MAP).values
+    train_labels = [label for _, label in train_dataset.samples]
     class_weights = compute_class_weight(
         class_weight="balanced",
         classes=np.array([0, 1, 2, 3]),
-        y=train_labels,
+        y=np.array(train_labels),
     )
     print(f"\n[INFO] Class weights: {dict(zip(SEASONS, class_weights.round(4)))}")
     weight_tensor = torch.tensor(class_weights, dtype=torch.float32).to(device)
@@ -471,10 +409,6 @@ def main():
     # ------------------------------------------------------------------
     # 4. Build DataLoaders
     # ------------------------------------------------------------------
-    train_dataset = PersonalColorDataset(train_df, DATASET_DIR, transform=train_transform)
-    test_dataset  = PersonalColorDataset(test_df,  DATASET_DIR, transform=val_transform)
-
-    # We use all test data as both val (during training) and final test
     train_loader = DataLoader(
         train_dataset, batch_size=BATCH_SIZE, shuffle=True,
         num_workers=0, pin_memory=(device.type == "cuda"),
@@ -589,7 +523,9 @@ def main():
     # 10. Final evaluation on test set using best model
     # ------------------------------------------------------------------
     print(f"\n[INFO] Loading best model for final test evaluation...")
-    model.load_state_dict(torch.load(MODEL_OUT, map_location=device))
+    checkpoint = torch.load(MODEL_OUT, map_location=device)
+    model.backbone.load_state_dict(checkpoint["backbone"])
+    model.head.load_state_dict(checkpoint["head"])
     model.eval()
 
     all_labels, all_preds = get_all_predictions(model, test_loader, device)

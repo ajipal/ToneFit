@@ -32,19 +32,18 @@ import json
 import time
 import warnings
 import numpy as np
-import pandas as pd
+from collections import Counter
 import matplotlib
 matplotlib.use("Agg")          # non-interactive backend — safe for Colab/servers
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 
 from pathlib import Path
-from PIL import Image
 
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 from torchvision import transforms
+from torchvision.datasets import ImageFolder
 
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.metrics import classification_report, confusion_matrix
@@ -55,13 +54,13 @@ warnings.filterwarnings("ignore")
 # CONFIGURATION
 # =============================================================================
 
-# --- Label mapping (must match preprocess.py) --------------------------------
-LABEL_MAP = {"spring": 0, "summer": 1, "autumn": 2, "winter": 3}
-SEASONS   = ["spring", "summer", "autumn", "winter"]
+# --- Label mapping — alphabetical, must match ImageFolder order --------------
+LABEL_MAP = {"autumn": 0, "spring": 1, "summer": 2, "winter": 3}
+SEASONS   = ["autumn", "spring", "summer", "winter"]
 
 # --- Paths (all relative to working directory — Colab-friendly) --------------
-DATASET_DIR   = Path("dataset")
-SPLIT_CSV     = Path("data_split.csv")
+TRAIN_DIR     = Path("RGB-M/train")   # READ ONLY — ImageFolder reads sub-types recursively
+TEST_DIR      = Path("RGB-M/test")    # READ ONLY
 MODELS_DIR    = Path("models")
 RESULTS_DIR   = Path("results")
 
@@ -87,7 +86,7 @@ INPUT_SIZE    = 224
 RESIZE_SIZE   = 256            # used only for val/test Resize before CenterCrop
 
 RANDOM_STATE  = 42
-NUM_WORKERS   = 2              # set to 0 if you get DataLoader errors on Windows
+NUM_WORKERS   = 0              # 0 is safest for Windows and Google Colab
 
 torch.manual_seed(RANDOM_STATE)
 np.random.seed(RANDOM_STATE)
@@ -125,77 +124,6 @@ val_transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406],
                          std=[0.229, 0.224, 0.225]),
 ])
-
-# =============================================================================
-# CUSTOM DATASET CLASS
-# =============================================================================
-
-class PersonalColorDataset(Dataset):
-    """
-    Loads face images for personal color season classification.
-
-    Reads from data_split.csv which has columns:
-        filename  — basename only (e.g., "spring_IU_001.jpg")
-        season    — one of: spring, summer, autumn, winter
-        split     — one of: train, test
-
-    Full image path is resolved as: dataset/{season}/{filename}
-    """
-
-    def __init__(self, split_csv: Path, dataset_dir: Path,
-                 split: str, transform=None):
-        """
-        Args:
-            split_csv    : path to data_split.csv
-            dataset_dir  : root dataset directory (e.g., Path("dataset"))
-            split        : "train" or "test"
-            transform    : torchvision transform to apply
-        """
-        self.dataset_dir = dataset_dir
-        self.transform   = transform
-
-        # Load the split CSV
-        df = pd.read_csv(split_csv)
-
-        # Keep only the requested split
-        df = df[df["split"] == split].reset_index(drop=True)
-
-        # Validate that all required seasons are present
-        missing_seasons = set(df["season"].unique()) - set(LABEL_MAP.keys())
-        if missing_seasons:
-            raise ValueError(f"Unknown seasons in CSV: {missing_seasons}")
-
-        self.samples = df[["filename", "season"]].values   # [[filename, season], ...]
-        self.labels  = df["season"].map(LABEL_MAP).values  # integer labels
-
-        print(f"[INFO] {split.upper()} set: {len(self.samples)} images")
-        counts = df["season"].value_counts().to_dict()
-        for s in SEASONS:
-            print(f"         {s:8s}: {counts.get(s, 0)}")
-
-    def __len__(self):
-        return len(self.samples)
-
-    def __getitem__(self, idx):
-        filename, season = self.samples[idx]
-        label = int(self.labels[idx])
-
-        # Construct full path: dataset/{season}/{filename}
-        img_path = self.dataset_dir / season / filename
-
-        try:
-            image = Image.open(img_path).convert("RGB")
-        except FileNotFoundError:
-            raise FileNotFoundError(
-                f"Image not found: {img_path}\n"
-                f"Check that data_split.csv filenames match files in dataset/{season}/"
-            )
-
-        if self.transform:
-            image = self.transform(image)
-
-        return image, label
-
 
 # =============================================================================
 # MODEL DEFINITION
@@ -250,33 +178,6 @@ class DINOv2Classifier(nn.Module):
         # Pass through trainable classifier head
         logits = self.head(features)     # shape: (batch, 4)
         return logits
-
-
-# =============================================================================
-# CLASS WEIGHTS (handle class imbalance)
-# =============================================================================
-
-def get_class_weights(split_csv: Path) -> torch.Tensor:
-    """
-    Compute balanced class weights using sklearn's compute_class_weight.
-    Filipino celebrities skew toward Autumn/Winter — this corrects for that.
-
-    Returns a FloatTensor of shape (4,) on the current device.
-    """
-    df = pd.read_csv(split_csv)
-    train_df = df[df["split"] == "train"]
-    y_train  = train_df["season"].map(LABEL_MAP).values
-
-    weights = compute_class_weight(
-        class_weight="balanced",
-        classes=np.array([0, 1, 2, 3]),
-        y=y_train,
-    )
-    print(f"[INFO] Class weights (balanced):")
-    for i, s in enumerate(SEASONS):
-        print(f"         {s:8s} (label={i}): {weights[i]:.4f}")
-
-    return torch.tensor(weights, dtype=torch.float32).to(device)
 
 
 # =============================================================================
@@ -397,43 +298,48 @@ def main():
     MODELS_DIR.mkdir(exist_ok=True)
     RESULTS_DIR.mkdir(exist_ok=True)
 
-    # --- Verify required files exist -----------------------------------------
-    if not SPLIT_CSV.exists():
-        raise FileNotFoundError(
-            f"data_split.csv not found at: {SPLIT_CSV}\n"
-            "Run preprocess.py first to generate this file."
-        )
-    if not DATASET_DIR.exists():
-        raise FileNotFoundError(
-            f"Dataset directory not found: {DATASET_DIR}\n"
-            "Run collect_data.py first to populate the dataset/ folder."
-        )
+    # --- Verify dataset folders exist ----------------------------------------
+    if not TRAIN_DIR.exists():
+        raise FileNotFoundError(f"Training folder not found: {TRAIN_DIR}")
+    if not TEST_DIR.exists():
+        raise FileNotFoundError(f"Test folder not found: {TEST_DIR}")
 
     print("=" * 60)
     print("  ToneFit — DINOv2 Personal Color Classifier Training")
     print("=" * 60)
 
-    # --- Class weights -------------------------------------------------------
-    class_weights = get_class_weights(SPLIT_CSV)
-
-    # --- Datasets and DataLoaders --------------------------------------------
+    # --- Datasets with ImageFolder (recursive — sub-types = same class) ------
     print("\n[INFO] Loading datasets ...")
-    train_dataset = PersonalColorDataset(SPLIT_CSV, DATASET_DIR,
-                                         split="train",
-                                         transform=train_transform)
-    test_dataset  = PersonalColorDataset(SPLIT_CSV, DATASET_DIR,
-                                         split="test",
-                                         transform=val_transform)
+    train_dataset = ImageFolder(root=str(TRAIN_DIR), transform=train_transform)
+    test_dataset  = ImageFolder(root=str(TEST_DIR),  transform=val_transform)
 
-    # Note: we use the test set as validation during training for simplicity.
-    # In a larger study, you would want a separate validation split.
+    print(f"[INFO] Classes detected: {train_dataset.classes}")
+    print(f"[INFO] Train samples: {len(train_dataset)}")
+    print(f"[INFO] Test  samples: {len(test_dataset)}")
+
+    train_counts = Counter(label for _, label in train_dataset.samples)
+    for i, s in enumerate(SEASONS):
+        print(f"         {s:8s}: {train_counts[i]}")
+
+    # --- Class weights -------------------------------------------------------
+    train_labels = [label for _, label in train_dataset.samples]
+    weights = compute_class_weight(
+        class_weight="balanced",
+        classes=np.array([0, 1, 2, 3]),
+        y=np.array(train_labels),
+    )
+    print(f"[INFO] Class weights (balanced):")
+    for i, s in enumerate(SEASONS):
+        print(f"         {s:8s} (label={i}): {weights[i]:.4f}")
+    class_weights = torch.tensor(weights, dtype=torch.float32).to(device)
+
+    # --- DataLoaders ---------------------------------------------------------
     train_loader = DataLoader(
         train_dataset,
         batch_size=BATCH_SIZE,
         shuffle=True,
         num_workers=NUM_WORKERS,
         pin_memory=(device.type == "cuda"),
-        drop_last=True,    # avoid batch-norm issues with incomplete last batch
     )
     val_loader = DataLoader(
         test_dataset,
@@ -454,7 +360,7 @@ def main():
     print(f"         Frozen (backbone): {frozen:,}")
 
     # --- Loss, Optimizer, Scheduler ------------------------------------------
-    criterion = nn.CrossEntropyLoss(weight=class_weights)
+    criterion = nn.CrossEntropyLoss(weight=class_weights)  # class_weights is a FloatTensor on device
 
     # Only pass trainable (head) parameters to the optimizer
     optimizer = torch.optim.AdamW(
