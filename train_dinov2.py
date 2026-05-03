@@ -383,7 +383,7 @@ def main():
         "val_acc":    [],
     }
 
-    best_val_loss = float("inf")
+    best_val_acc  = 0.0
     best_epoch    = 1
 
     # --- Table header --------------------------------------------------------
@@ -407,8 +407,8 @@ def main():
         history["val_acc"].append(val_acc)
 
         # Save best model
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
+        if val_acc > best_val_acc:
+            best_val_acc  = val_acc
             best_epoch    = epoch
             torch.save(
                 {
@@ -431,7 +431,7 @@ def main():
     total_time = time.time() - start_time
     print("-" * 72)
     print(f"[INFO] Training complete in {total_time / 60:.1f} min")
-    print(f"[INFO] Best epoch: {best_epoch}  |  Best val loss: {best_val_loss:.4f}")
+    print(f"[INFO] Best epoch: {best_epoch}  |  Best val acc: {best_val_acc:.4f}")
     print(f"[INFO] Best model saved → {MODEL_OUT}")
 
     # --- Save training history to JSON ---------------------------------------
