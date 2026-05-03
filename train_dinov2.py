@@ -146,14 +146,15 @@ class DINOv2Classifier(nn.Module):
                  num_classes: int = NUM_CLASSES, dropout: float = DROPOUT):
         super().__init__()
 
-        # Load DINOv2 ViT-B/14 from torch.hub
-        print("[INFO] Loading DINOv2 ViT-B/14 from torch.hub ...")
+        # Load DINOv2 ViT-B/14 via timm (avoids torch.hub Colab issues)
+        print("[INFO] Loading DINOv2 ViT-B/14 via timm ...")
         print("       (First run will download ~330 MB of weights)")
-        self.backbone = torch.hub.load(
-            "facebookresearch/dinov2",
-            "dinov2_vitb14",
+        import timm
+        self.backbone = timm.create_model(
+            "vit_base_patch14_dinov2.lvd142m",
             pretrained=True,
-            verbose=False,
+            num_classes=0,  # removes classification head, returns 768-d features
+            img_size=224,   # interpolate positional embeddings from 518 to 224
         )
 
         # Freeze ALL backbone parameters — we only train the head
@@ -170,8 +171,7 @@ class DINOv2Classifier(nn.Module):
         )
 
     def forward(self, x):
-        # Extract [CLS] token embedding from DINOv2
-        # DINOv2's forward_features returns a dict; we use the CLS token
+        # timm with num_classes=0 returns pooled CLS token directly
         with torch.no_grad():            # backbone is frozen — no grad needed
             features = self.backbone(x)  # shape: (batch, 768)
 
