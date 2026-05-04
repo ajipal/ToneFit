@@ -267,7 +267,7 @@ def train_one_epoch(model, loader, optimizer, criterion, device):
     total      = 0
 
     for images, labels in loader:
-        images = images.to(device)
+        images = images.to(device).float()
         labels = labels.to(device)
 
         optimizer.zero_grad()
@@ -295,7 +295,7 @@ def evaluate(model, loader, criterion, device):
 
     with torch.no_grad():
         for images, labels in loader:
-            images = images.to(device)
+            images = images.to(device).float()
             labels = labels.to(device)
 
             outputs = model(images)
@@ -319,7 +319,7 @@ def get_all_predictions(model, loader, device):
 
     with torch.no_grad():
         for images, labels in loader:
-            images = images.to(device)
+            images = images.to(device).float()
             outputs = model(images)
             preds   = outputs.argmax(dim=1).cpu().numpy()
             all_preds.extend(preds)
