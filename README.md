@@ -48,11 +48,9 @@ ToneFit/
 ├── evaluate.py            # Step 5: Compare model performance vs paper baselines
 ├── app.py                 # Step 6: Streamlit web app
 ├── audit_dataset.py       # Optional: dataset quality check after preprocess.py
-├── dataset/               # Deep Armocromia images (not tracked in git)
-│   ├── spring/
-│   ├── summer/
-│   ├── autumn/
-│   └── winter/
+├── RGB-M/                 # Deep Armocromia images (not tracked in git)
+│   ├── train/             # season subfolders with sub-type subfolders
+│   └── test/              # season subfolders with sub-type subfolders
 ├── models/                # Saved model weights (not tracked in git)
 │   └── farl_weights.pth   # FaRL ep64 pretrained weights — download separately
 ├── results/               # Evaluation outputs (not tracked in git)
@@ -74,12 +72,7 @@ This project uses the **Deep Armocromia dataset** (Stacchio et al., ECCV 2024) �
 - Pre-defined train/test split included in `annotations.csv`
 - Download requires filling the request form (see below)
 
-**Dataset access:**
-1. Fill the request form: [https://forms.gle/icac2opCYqF79RyE9](https://forms.gle/icac2opCYqF79RyE9)
-2. Download from Google Drive (link provided after form submission)
-3. Extract into `dataset/spring/`, `dataset/summer/`, `dataset/autumn/`, `dataset/winter/`
-
-> Note: Italian season names in the zip map as follows — `primavera` → spring, `estate` → summer, `autunno` → autumn, `inverno` → winter
+Dataset obtained from the Deep Armocromia GitHub repository (github.com/lorenzo-stacchio/Deep-Armocromia) upon request. Place the `RGB-M/` folder in the project root directory.
 
 ---
 

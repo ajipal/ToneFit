@@ -2,7 +2,12 @@
 train_farl.py — ToneFit ML Project
 ====================================
 Model A: FaRL (Face Representation Learning) Classifier
-Backbone: ViT-Base with FaRL pretrained weights (fallback: ResNeXt50)
+Backbone: CLIP ViT-B/16 loaded via OpenAI CLIP, then patched with FaRL weights.
+         model.visual is used as the frozen feature extractor (feature_dim=512).
+         Fallback: ResNeXt50 (torchvision, ImageNet pretrained).
+
+Requires:
+    pip install git+https://github.com/openai/CLIP.git
 
 Pipeline step: Step 4b — Deep Learning Training (FaRL)
 
@@ -61,7 +66,7 @@ WEIGHT_DECAY = 1e-5
 T_0         = 10          # CosineAnnealingWarmRestarts restart period
 ETA_MIN     = 1e-5
 
-FARL_FEATURE_DIM   = 768   # ViT-Base hidden size
+FARL_FEATURE_DIM    = 512   # CLIP ViT-B/16 projected output dim
 RESNEXT_FEATURE_DIM = 2048  # ResNeXt50 output features
 
 # ---------------------------------------------------------------------------
@@ -79,7 +84,11 @@ print(f"[INFO] Using device: {device}")
 # DATA TRANSFORMS
 # ---------------------------------------------------------------------------
 
-# ImageNet normalization (used by both ViT and ResNeXt)
+# CLIP normalization — required for CLIP ViT-B/16 backbone
+CLIP_MEAN = [0.48145466, 0.4578275,  0.40821073]
+CLIP_STD  = [0.26862954, 0.26130258, 0.27577711]
+
+# ResNeXt fallback uses standard ImageNet normalization
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD  = [0.229, 0.224, 0.225]
 
@@ -89,10 +98,27 @@ train_transform = transforms.Compose([
     transforms.ColorJitter(brightness=0.4, contrast=0.2, saturation=0.2),
     transforms.RandomAdjustSharpness(sharpness_factor=2, p=0.2),
     transforms.ToTensor(),
-    transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
+    transforms.Normalize(mean=CLIP_MEAN, std=CLIP_STD),
 ])
 
 val_transform = transforms.Compose([
+    transforms.Resize(256),
+    transforms.CenterCrop(224),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=CLIP_MEAN, std=CLIP_STD),
+])
+
+# Separate transforms for the ResNeXt fallback path
+resnext_train_transform = transforms.Compose([
+    transforms.RandomResizedCrop(224),
+    transforms.RandomHorizontalFlip(p=0.5),
+    transforms.ColorJitter(brightness=0.4, contrast=0.2, saturation=0.2),
+    transforms.RandomAdjustSharpness(sharpness_factor=2, p=0.2),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
+])
+
+resnext_val_transform = transforms.Compose([
     transforms.Resize(256),
     transforms.CenterCrop(224),
     transforms.ToTensor(),
@@ -122,24 +148,18 @@ def build_classifier_head(feature_dim: int) -> nn.Sequential:
 
 class FaRLModel(nn.Module):
     """
-    FaRL backbone (ViT-Base) + classifier head.
+    CLIP ViT-B/16 visual encoder patched with FaRL weights + classifier head.
     The backbone is frozen; only the head is trained.
     """
 
-    def __init__(self, vit_backbone, feature_dim: int = FARL_FEATURE_DIM):
+    def __init__(self, visual_backbone, feature_dim: int = FARL_FEATURE_DIM):
         super().__init__()
-        self.backbone = vit_backbone
+        self.backbone = visual_backbone
         self.head = build_classifier_head(feature_dim)
 
     def forward(self, x):
-        # timm ViT models return (batch, num_patches+1, hidden_dim) with
-        # forward_features, then we take the CLS token at index 0.
-        features = self.backbone.forward_features(x)   # (B, N+1, 768) or (B, 768)
-
-        # Some timm versions already return the CLS token directly as (B, 768)
-        if features.dim() == 3:
-            features = features[:, 0, :]   # CLS token
-
+        # CLIP visual encoder applies the projection and returns (B, 512)
+        features = self.backbone(x)
         return self.head(features)
 
 
@@ -175,41 +195,39 @@ def load_model():
 
     if farl_path.exists():
         # ------------------------------------------------------------------ #
-        # Load FaRL (ViT-Base)
+        # Load FaRL via CLIP ViT-B/16
+        # Requires: pip install git+https://github.com/openai/CLIP.git
         # ------------------------------------------------------------------ #
-        print("[INFO] FaRL weights found. Loading ViT-Base backbone...")
+        print("[INFO] FaRL weights found. Loading CLIP ViT-B/16 backbone...")
         try:
-            import timm
+            import clip
         except ImportError:
             raise ImportError(
-                "timm is required for FaRL. Install it with:  pip install timm"
+                "CLIP is required for FaRL. Install it with:\n"
+                "  pip install git+https://github.com/openai/CLIP.git"
             )
 
-        # Create a ViT-Base model with timm (no pretrained weights yet —
-        # we load the FaRL checkpoint manually below)
-        vit = timm.create_model("vit_base_patch16_224", pretrained=False, num_classes=0)
+        # Load the CLIP ViT-B/16 model (provides the correct architecture)
+        clip_model, _ = clip.load("ViT-B/16", device="cpu")
 
-        # Load the FaRL checkpoint
-        checkpoint = torch.load(str(farl_path), map_location="cpu")
+        # Load the FaRL checkpoint and apply its weights to the CLIP model
+        farl_state = torch.load(str(farl_path), map_location="cpu")
+        state_dict = farl_state.get("state_dict", farl_state)
 
-        # FaRL checkpoints may store weights under a 'model' or 'state_dict' key
-        if isinstance(checkpoint, dict):
-            state_dict = checkpoint.get("model", checkpoint.get("state_dict", checkpoint))
-        else:
-            state_dict = checkpoint
-
-        # Strip any 'module.' prefix that appears when saved from DataParallel
+        # Strip any 'module.' prefix from DataParallel-saved checkpoints
         cleaned = {k.replace("module.", ""): v for k, v in state_dict.items()}
 
-        missing, unexpected = vit.load_state_dict(cleaned, strict=False)
-        print(f"[INFO] FaRL weights loaded. Missing keys: {len(missing)}, Unexpected: {len(unexpected)}")
+        missing, unexpected = clip_model.load_state_dict(cleaned, strict=False)
+        print(f"[INFO] FaRL weights applied. Missing keys: {len(missing)}, Unexpected: {len(unexpected)}")
 
-        # Freeze backbone
+        # Use the visual encoder as the frozen backbone; cast to float32 for
+        # training stability (CLIP defaults to float16 on CUDA)
+        vit = clip_model.visual.float()
         for param in vit.parameters():
             param.requires_grad = False
 
         model = FaRLModel(vit, feature_dim=FARL_FEATURE_DIM)
-        backbone_name = "FaRL (ViT-Base)"
+        backbone_name = "FaRL (CLIP ViT-B/16, feature_dim=512)"
 
     else:
         # ------------------------------------------------------------------ #
