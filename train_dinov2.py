@@ -70,15 +70,17 @@ PLOT_OUT      = RESULTS_DIR / "dinov2_training.png"
 REPORT_OUT    = RESULTS_DIR / "dinov2_test_report.txt"
 
 # --- Hyperparameters ---------------------------------------------------------
-EPOCHS        = 50
-BATCH_SIZE    = 64
-LR            = 1e-3           # AdamW learning rate for the classifier head
-WEIGHT_DECAY  = 1e-5
-T_0           = 10             # CosineAnnealingWarmRestarts restart period
-ETA_MIN       = 1e-5           # minimum LR at cosine bottom
-DROPOUT       = 0.5
-FEATURE_DIM   = 768            # DINOv2 ViT-B/14 output dimension
-NUM_CLASSES   = 4
+EPOCHS           = 50
+BATCH_SIZE       = 64
+LR               = 1e-3        # AdamW learning rate for the classifier head
+BACKBONE_LR      = 1e-5        # lower LR for unfrozen backbone blocks
+WEIGHT_DECAY     = 1e-5
+T_0              = 10          # CosineAnnealingWarmRestarts restart period
+ETA_MIN          = 1e-5        # minimum LR at cosine bottom
+DROPOUT          = 0.5
+FEATURE_DIM      = 768         # DINOv2 ViT-B/14 output dimension
+NUM_CLASSES      = 4
+N_UNFREEZE_BLOCKS = 2          # number of final transformer blocks to unfreeze
 
 # DINOv2 patch size = 14 → input must be a multiple of 14
 # 224 = 14 × 16  ✓
@@ -157,10 +159,18 @@ class DINOv2Classifier(nn.Module):
             img_size=224,   # interpolate positional embeddings from 518 to 224
         )
 
-        # Freeze ALL backbone parameters — we only train the head
+        # Freeze entire backbone first, then selectively unfreeze last N blocks
         for param in self.backbone.parameters():
             param.requires_grad = False
-        print("[INFO] Backbone frozen. Only classifier head will be trained.")
+
+        for block in self.backbone.blocks[-N_UNFREEZE_BLOCKS:]:
+            for param in block.parameters():
+                param.requires_grad = True
+        for param in self.backbone.norm.parameters():
+            param.requires_grad = True
+
+        unfrozen = sum(p.numel() for p in self.backbone.parameters() if p.requires_grad)
+        print(f"[INFO] Unfroze last {N_UNFREEZE_BLOCKS} backbone blocks + norm ({unfrozen:,} params).")
 
         # Classifier head — same architecture as FaRL baseline for fair comparison
         self.head = nn.Sequential(
@@ -172,11 +182,8 @@ class DINOv2Classifier(nn.Module):
 
     def forward(self, x):
         # timm with num_classes=0 returns pooled CLS token directly
-        with torch.no_grad():            # backbone is frozen — no grad needed
-            features = self.backbone(x)  # shape: (batch, 768)
-
-        # Pass through trainable classifier head
-        logits = self.head(features)     # shape: (batch, 4)
+        features = self.backbone(x)  # shape: (batch, 768)
+        logits = self.head(features) # shape: (batch, 4)
         return logits
 
 
@@ -362,12 +369,13 @@ def main():
     # --- Loss, Optimizer, Scheduler ------------------------------------------
     criterion = nn.CrossEntropyLoss(weight=class_weights)  # class_weights is a FloatTensor on device
 
-    # Only pass trainable (head) parameters to the optimizer
-    optimizer = torch.optim.AdamW(
-        filter(lambda p: p.requires_grad, model.parameters()),
-        lr=LR,
-        weight_decay=WEIGHT_DECAY,
-    )
+    # Differential LRs: low LR for unfrozen backbone blocks, higher for head
+    backbone_params = [p for p in model.backbone.parameters() if p.requires_grad]
+    head_params     = list(model.head.parameters())
+    optimizer = torch.optim.AdamW([
+        {"params": backbone_params, "lr": BACKBONE_LR},
+        {"params": head_params,     "lr": LR},
+    ], weight_decay=WEIGHT_DECAY)
 
     # CosineAnnealingWarmRestarts: cosine decay with periodic restarts
     # T_0=10 means the first restart happens after 10 epochs
