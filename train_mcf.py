@@ -150,7 +150,7 @@ def load_model():
 
     if mcf_path.exists():
         print("[INFO] MCF weights found. Loading MCF ViT-B/16 backbone...")
-        checkpoint = torch.load(str(mcf_path), map_location="cpu")
+        checkpoint = torch.load(str(mcf_path), map_location="cpu", weights_only=False)
 
         # MCF checkpoint may be nested under 'model' key
         state_dict = checkpoint.get("model", checkpoint)
