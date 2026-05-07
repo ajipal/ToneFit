@@ -1,7 +1,7 @@
 """
 ToneFit ML — Model Evaluation (Step 6)
 ========================================
-Evaluates FaRL and DINOv2 on the held-out test set and compares them
+Evaluates FaRL, DINOv2, and MCF on the held-out test set and compares them
 against each other and against the Deep Armocromia paper baselines.
 
 Usage:
@@ -10,6 +10,7 @@ Usage:
 Requires:
     - models/farl_model.pth    (from train_farl.py)
     - models/dinov2_model.pth  (from train_dinov2.py)
+    - models/mcf_model.pth     (from train_mcf.py)
     - RGB-M/test/              (READ ONLY — loaded via ImageFolder)
 """
 
@@ -38,6 +39,7 @@ RESULTS_DIR   = "results"
 
 FARL_PATH     = os.path.join(MODELS_DIR, "farl_model.pth")
 DINOV2_PATH   = os.path.join(MODELS_DIR, "dinov2_model.pth")
+MCF_PATH      = os.path.join(MODELS_DIR, "mcf_model.pth")
 
 SEASONS       = ["autumn", "spring", "summer", "winter"]  # alphabetical — ImageFolder order
 LABEL_MAP     = {"autumn": 0, "spring": 1, "summer": 2, "winter": 3}
@@ -154,6 +156,41 @@ def load_dinov2(path):
     model.eval()
     return model
 
+
+def load_mcf(path):
+    """Load MCF (Mask Contrastive Face) ViT-B/16 model."""
+    try:
+        import timm
+    except ImportError:
+        raise ImportError("timm is required for MCF. Install with: pip install timm>=0.9.0")
+    backbone = timm.create_model("vit_base_patch16_224", pretrained=False, num_classes=0)
+    feature_dim = 768
+    head = build_classifier_head(feature_dim)
+
+    checkpoint = torch.load(path, map_location=DEVICE)
+    if "backbone" in checkpoint and "head" in checkpoint:
+        backbone.load_state_dict(checkpoint["backbone"], strict=False)
+        head.load_state_dict(checkpoint["head"])
+    else:
+        try:
+            backbone.load_state_dict(checkpoint, strict=False)
+        except Exception:
+            pass
+
+    class _Model(nn.Module):
+        def __init__(self, bb, h):
+            super().__init__()
+            self.backbone = bb
+            self.head = h
+        def forward(self, x):
+            with torch.no_grad():
+                feats = self.backbone(x)
+            return self.head(feats)
+
+    model = _Model(backbone, head).to(DEVICE)
+    model.eval()
+    return model
+
 # ── INFERENCE ──────────────────────────────────────────────────────────────────
 
 def run_inference(model, loader):
@@ -242,7 +279,7 @@ def save_combined_confusion_matrices(results):
                      fontsize=12, fontweight="bold")
         ax.set_xlabel("Predicted", fontsize=10)
         ax.set_ylabel("Actual", fontsize=10)
-    fig.suptitle("Confusion Matrices — FaRL vs DINOv2 (Test Set)",
+    fig.suptitle("Confusion Matrices — FaRL vs DINOv2 vs MCF (Test Set)",
                  fontsize=14, fontweight="bold")
     plt.tight_layout()
     path = os.path.join(RESULTS_DIR, "confusion_matrices.png")
@@ -263,7 +300,7 @@ def save_comparison_chart(df_our, baselines):
 
     # Color: gray for paper baselines, colored for ours
     n_base  = len(baselines)
-    colors  = ["#AAAAAA"] * n_base + ["#4C72B0", "#DD8452"][:len(df_our)]
+    colors  = ["#AAAAAA"] * n_base + ["#4C72B0", "#DD8452", "#55A868"][:len(df_our)]
 
     for ax, vals, title, ylabel in [
         (axes[0], accuracies, "Accuracy",  "Accuracy"),
@@ -297,7 +334,7 @@ def save_comparison_chart(df_our, baselines):
 def run():
     log.info("=" * 65)
     log.info("  ToneFit ML — Model Evaluation")
-    log.info("  FaRL vs DINOv2 | Deep Armocromia dataset")
+    log.info("  FaRL vs DINOv2 vs MCF | Deep Armocromia dataset")
     log.info("=" * 65)
     log.info(f"  Device: {DEVICE}")
 
@@ -350,6 +387,23 @@ def run():
         model_results.append({
             "name": "DINOv2 (ours)", "y_true": y_true_d,
             "y_pred": y_pred_d, "metrics": metrics_d,
+        })
+
+    # ── MCF ───────────────────────────────────────────────────────────────────
+    log.info("\n" + "─" * 65)
+    log.info("  MODEL C: MCF (Mask Contrastive Face, ViT-B/16)")
+    log.info("─" * 65)
+    if not os.path.exists(MCF_PATH):
+        log.warning(f"  {MCF_PATH} not found — skipping MCF.")
+    else:
+        log.info(f"  Loading from {MCF_PATH} ...")
+        mcf = load_mcf(MCF_PATH)
+        y_true_m, y_pred_m, y_prob_m = run_inference(mcf, test_loader)
+        metrics_m = compute_metrics("MCF (ours)", y_true_m, y_pred_m, y_prob_m)
+        save_confusion_matrix(y_true_m, y_pred_m, "MCF (ours)", "confusion_mcf.png")
+        model_results.append({
+            "name": "MCF (ours)", "y_true": y_true_m,
+            "y_pred": y_pred_m, "metrics": metrics_m,
         })
 
     if not model_results:
@@ -410,6 +464,7 @@ def run():
     log.info(f"    {RESULTS_DIR}/comparison_table.csv")
     log.info(f"    {RESULTS_DIR}/confusion_farl.png")
     log.info(f"    {RESULTS_DIR}/confusion_dinov2.png")
+    log.info(f"    {RESULTS_DIR}/confusion_mcf.png")
     log.info(f"    {RESULTS_DIR}/confusion_matrices.png")
     log.info(f"    {RESULTS_DIR}/model_comparison.png")
     log.info("=" * 65)

@@ -6,6 +6,7 @@ models/*.h5
 
 # Training outputs
 results/
+evaluation/
 __pycache__/
 *.pyc
 *.pyo
