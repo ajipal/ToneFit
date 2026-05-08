@@ -1,17 +1,24 @@
 """
-train.py — Hierarchical Deep Armocromia Training
--------------------------------------------------
+train.py — Hierarchical Deep Armocromia Training (feature-cached)
+-----------------------------------------------------------------
 Trains DeepArmocromiaHierarchical (frozen FaRL-64 backbone + two-stage head)
 on the RGB-M dataset using AdamW + CosineAnnealingWarmRestarts.
+
+Feature caching: backbone runs once before training starts, outputs are saved
+to results/features_{train,val}.pt. Subsequent runs load the cache directly,
+making each epoch ~10× faster (head-only forward/backward, no ViT pass).
 
 Usage:
     python train.py --config configs/hierarchical.yaml
     python train.py --config configs/hierarchical.yaml --resume results/checkpoint_epoch_25.pth
+    python train.py --config configs/hierarchical.yaml --recache   # force rebuild cache
 
 Outputs:
-    results/best_hierarchical.pth        — best checkpoint (by val season accuracy)
-    results/checkpoint_epoch_{N}.pth     — checkpoint saved every epoch
-    results/hierarchical_history.json    — full loss/accuracy history
+    results/features_train.pt         — cached backbone features (train set)
+    results/features_val.pt           — cached backbone features (val/test set)
+    results/best_hierarchical.pth     — best checkpoint (by val season accuracy)
+    results/checkpoint_epoch_{N}.pth  — per-epoch checkpoint with full optimizer state
+    results/hierarchical_history.json — full loss/accuracy history
 """
 
 import argparse
@@ -24,12 +31,15 @@ from pathlib import Path
 from collections import Counter
 
 import torch
-from torch.utils.data import DataLoader, Dataset
+import torch.backends.cudnn
+from torch.utils.data import DataLoader, Dataset, TensorDataset
 from torchvision import transforms
 from PIL import Image
 import yaml
 
 from hierarchical_head import DeepArmocromiaHierarchical, HierarchicalLoss
+
+torch.backends.cudnn.benchmark = True
 
 # ── Label definitions ─────────────────────────────────────────────────────────
 
@@ -46,7 +56,7 @@ SUBTYPE_TO_IDX = {s: i for i, s in enumerate(SUBTYPE_CLASSES)}
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD  = [0.229, 0.224, 0.225]
 
-EARLY_STOP_PATIENCE = 10   # stop if season acc stagnates this many epochs
+EARLY_STOP_PATIENCE = 10
 
 
 # ── Dataset ───────────────────────────────────────────────────────────────────
@@ -94,16 +104,7 @@ class ArmocromiaDataset(Dataset):
 
 # ── Transforms ────────────────────────────────────────────────────────────────
 
-def build_transforms(training: bool):
-    if training:
-        return transforms.Compose([
-            transforms.RandomResizedCrop(224),
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.ColorJitter(brightness=0.4, contrast=0.2, saturation=0.2),
-            transforms.RandomAdjustSharpness(sharpness_factor=2, p=0.2),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
-        ])
+def build_val_transform():
     return transforms.Compose([
         transforms.Resize(256),
         transforms.CenterCrop(224),
@@ -112,25 +113,141 @@ def build_transforms(training: bool):
     ])
 
 
-# ── Train / eval helpers ──────────────────────────────────────────────────────
+# ── Feature caching ───────────────────────────────────────────────────────────
 
-def train_one_epoch(model, loader, optimizer, criterion, device):
-    model.train()
+def _extract_features(backbone, dataset, device, batch_size):
+    """
+    Run backbone over all images in dataset (no augmentation).
+    Returns (features [N,512], season_labels [N], subtype_labels [N]).
+    """
+    loader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=2,
+        pin_memory=(device.type == "cuda"),
+    )
+
+    all_feats, all_seasons, all_subtypes = [], [], []
+
+    backbone.eval()
+    with torch.no_grad():
+        for imgs, season_lbl, subtype_lbl in loader:
+            feats = backbone(imgs.to(device))
+            all_feats.append(feats.cpu())
+            all_seasons.append(season_lbl)
+            all_subtypes.append(subtype_lbl)
+
+    return (
+        torch.cat(all_feats,    dim=0),
+        torch.cat(all_seasons,  dim=0),
+        torch.cat(all_subtypes, dim=0),
+    )
+
+
+def build_or_load_cache(model, train_ds, val_ds, out_dir, device, batch_size,
+                        recache=False):
+    """
+    Cache backbone features for train and val sets.
+    Creates cache files if missing (or recache=True), otherwise loads them.
+
+    Returns:
+        train_cache, val_cache — each a dict with keys:
+            'features' [N,512], 'season_labels' [N], 'subtype_labels' [N]
+    """
+    cache_train = os.path.join(out_dir, "features_train.pt")
+    cache_val   = os.path.join(out_dir, "features_val.pt")
+
+    need_cache = recache or not (
+        os.path.exists(cache_train) and os.path.exists(cache_val)
+    )
+
+    if need_cache:
+        print("[CACHE] Extracting backbone features (runs once)...")
+        t0 = time.time()
+
+        val_tf = build_val_transform()
+        train_cache_ds = _DatasetFromSamples(train_ds.samples, val_tf)
+        val_cache_ds   = _DatasetFromSamples(val_ds.samples,   val_tf)
+
+        tr_feats, tr_szn, tr_sub = _extract_features(
+            model.backbone, train_cache_ds, device, batch_size
+        )
+        vl_feats, vl_szn, vl_sub = _extract_features(
+            model.backbone, val_cache_ds, device, batch_size
+        )
+
+        train_payload = {
+            "features":       tr_feats,
+            "season_labels":  tr_szn,
+            "subtype_labels": tr_sub,
+        }
+        val_payload = {
+            "features":       vl_feats,
+            "season_labels":  vl_szn,
+            "subtype_labels": vl_sub,
+        }
+        torch.save(train_payload, cache_train)
+        torch.save(val_payload,   cache_val)
+
+        elapsed = time.time() - t0
+        print(f"[CACHE] Features cached in {elapsed:.1f}s. "
+              f"Train: {len(tr_feats)} samples, Val: {len(vl_feats)} samples")
+    else:
+        train_payload = torch.load(cache_train, map_location="cpu")
+        val_payload   = torch.load(cache_val,   map_location="cpu")
+        print(f"[CACHE] Loaded cached features. "
+              f"Train: {len(train_payload['features'])} samples, "
+              f"Val: {len(val_payload['features'])} samples")
+
+    return train_payload, val_payload
+
+
+class _DatasetFromSamples(Dataset):
+    """Minimal dataset that reuses pre-scanned sample list with a given transform."""
+
+    def __init__(self, samples: list[tuple[str, int, int]], transform):
+        self.samples   = samples
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        path, season_idx, subtype_idx = self.samples[idx]
+        img = Image.open(path).convert("RGB")
+        if self.transform:
+            img = self.transform(img)
+        return img, season_idx, subtype_idx
+
+
+def _make_tensor_loader(cache: dict, batch_size: int, shuffle: bool,
+                        device: torch.device) -> DataLoader:
+    """Wrap cached feature tensors in a TensorDataset DataLoader."""
+    ds = TensorDataset(
+        cache["features"].to(device),
+        cache["season_labels"].to(device),
+        cache["subtype_labels"].to(device),
+    )
+    return DataLoader(ds, batch_size=batch_size, shuffle=shuffle)
+
+
+# ── Train / eval on cached features ──────────────────────────────────────────
+
+def train_one_epoch(head, loader, optimizer, criterion):
+    head.train()
     total_loss = season_loss_sum = subtype_loss_sum = 0.0
     correct_season = correct_subtype = total = 0
 
-    for imgs, season_labels, subtype_labels in loader:
-        imgs           = imgs.to(device)
-        season_labels  = season_labels.to(device)
-        subtype_labels = subtype_labels.to(device)
-
+    for features, season_labels, subtype_labels in loader:
         optimizer.zero_grad()
-        season_logits, subtype_logits = model(imgs)
-        loss, ls, lsub = criterion(season_logits, subtype_logits, season_labels, subtype_labels)
+        season_logits, subtype_logits = head(features)
+        loss, ls, lsub = criterion(season_logits, subtype_logits,
+                                   season_labels, subtype_labels)
         loss.backward()
         optimizer.step()
 
-        bs = imgs.size(0)
+        bs = features.size(0)
         total_loss       += loss.item() * bs
         season_loss_sum  += ls.item() * bs
         subtype_loss_sum += lsub.item() * bs
@@ -138,31 +255,27 @@ def train_one_epoch(model, loader, optimizer, criterion, device):
         correct_subtype  += (subtype_logits.argmax(1) == subtype_labels).sum().item()
         total += bs
 
-    n = total
     return {
-        "total_loss":   total_loss / n,
-        "season_loss":  season_loss_sum / n,
-        "subtype_loss": subtype_loss_sum / n,
-        "season_acc":   correct_season / n,
-        "subtype_acc":  correct_subtype / n,
+        "total_loss":   total_loss   / total,
+        "season_loss":  season_loss_sum  / total,
+        "subtype_loss": subtype_loss_sum / total,
+        "season_acc":   correct_season   / total,
+        "subtype_acc":  correct_subtype  / total,
     }
 
 
 @torch.no_grad()
-def evaluate(model, loader, criterion, device):
-    model.eval()
+def evaluate(head, loader, criterion):
+    head.eval()
     total_loss = season_loss_sum = subtype_loss_sum = 0.0
     correct_season = correct_subtype = total = 0
 
-    for imgs, season_labels, subtype_labels in loader:
-        imgs           = imgs.to(device)
-        season_labels  = season_labels.to(device)
-        subtype_labels = subtype_labels.to(device)
+    for features, season_labels, subtype_labels in loader:
+        season_logits, subtype_logits = head(features)
+        loss, ls, lsub = criterion(season_logits, subtype_logits,
+                                   season_labels, subtype_labels)
 
-        season_logits, subtype_logits = model(imgs)
-        loss, ls, lsub = criterion(season_logits, subtype_logits, season_labels, subtype_labels)
-
-        bs = imgs.size(0)
+        bs = features.size(0)
         total_loss       += loss.item() * bs
         season_loss_sum  += ls.item() * bs
         subtype_loss_sum += lsub.item() * bs
@@ -170,13 +283,12 @@ def evaluate(model, loader, criterion, device):
         correct_subtype  += (subtype_logits.argmax(1) == subtype_labels).sum().item()
         total += bs
 
-    n = total
     return {
-        "total_loss":   total_loss / n,
-        "season_loss":  season_loss_sum / n,
-        "subtype_loss": subtype_loss_sum / n,
-        "season_acc":   correct_season / n,
-        "subtype_acc":  correct_subtype / n,
+        "total_loss":   total_loss   / total,
+        "season_loss":  season_loss_sum  / total,
+        "subtype_loss": subtype_loss_sum / total,
+        "season_acc":   correct_season   / total,
+        "subtype_acc":  correct_subtype  / total,
     }
 
 
@@ -202,17 +314,16 @@ def load_resume_checkpoint(path, model, optimizer, scheduler, device):
     model.head.load_state_dict(ckpt["head_state"])
     optimizer.load_state_dict(ckpt["optimizer_state"])
     scheduler.load_state_dict(ckpt["scheduler_state"])
-    start_epoch      = ckpt["epoch"] + 1
-    history          = ckpt.get("history", [])
-    best_season_acc  = ckpt.get("best_season_acc", 0.0)
-    best_epoch       = ckpt.get("best_epoch", ckpt["epoch"])
+    start_epoch     = ckpt["epoch"] + 1
+    history         = ckpt.get("history", [])
+    best_season_acc = ckpt.get("best_season_acc", 0.0)
+    best_epoch      = ckpt.get("best_epoch", ckpt["epoch"])
     print(f"[RESUME] Resuming from epoch {start_epoch} "
           f"| best season acc so far: {best_season_acc:.4f} (epoch {best_epoch})")
     return start_epoch, history, best_season_acc, best_epoch
 
 
 def sync_to_drive(results_dir: str, drive_dir: str):
-    """Copy all .pth and .json files from results_dir to drive_dir."""
     os.makedirs(drive_dir, exist_ok=True)
     copied = 0
     for pattern in ("*.pth", "*.json", "*.png"):
@@ -231,6 +342,8 @@ def main():
                         help="Path to a checkpoint_epoch_N.pth to resume from")
     parser.add_argument("--drive_dir", default=None,
                         help="Google Drive path — syncs results/ here every 5 epochs")
+    parser.add_argument("--recache",   action="store_true",
+                        help="Force re-extraction of backbone features even if cache exists")
     args = parser.parse_args()
 
     with open(args.config) as f:
@@ -242,22 +355,16 @@ def main():
     out_dir = cfg["output"]["checkpoint_dir"]
     os.makedirs(out_dir, exist_ok=True)
 
-    # Datasets & loaders
-    train_ds = ArmocromiaDataset(cfg["data"]["train_dir"], transform=build_transforms(True))
-    test_ds  = ArmocromiaDataset(cfg["data"]["test_dir"],  transform=build_transforms(False))
-    print(f"[INFO] Train: {len(train_ds)} | Test: {len(test_ds)}")
+    # ── Scan datasets ─────────────────────────────────────────────────────
+    train_ds = ArmocromiaDataset(cfg["data"]["train_dir"])
+    val_ds   = ArmocromiaDataset(cfg["data"]["test_dir"])
+    print(f"[INFO] Train: {len(train_ds)} | Val: {len(val_ds)}")
 
     train_counts = Counter(sub for _, _, sub in train_ds.samples)
     for i, name in enumerate(SUBTYPE_CLASSES):
         print(f"  {name:<22}: {train_counts[i]}")
 
-    bs = cfg["training"]["batch_size"]
-    train_loader = DataLoader(train_ds, batch_size=bs, shuffle=True,
-                              num_workers=0, pin_memory=(device.type == "cuda"))
-    test_loader  = DataLoader(test_ds,  batch_size=bs, shuffle=False,
-                              num_workers=0, pin_memory=(device.type == "cuda"))
-
-    # Model
+    # ── Build model (backbone needed for caching) ─────────────────────────
     ckpt_path = cfg["model"].get("checkpoint_path")
     model = DeepArmocromiaHierarchical(
         checkpoint_path=ckpt_path if ckpt_path else None,
@@ -270,6 +377,17 @@ def main():
     total_p   = sum(p.numel() for p in model.parameters())
     print(f"[INFO] Trainable params: {trainable:,} / {total_p:,}")
 
+    # ── Cache backbone features ───────────────────────────────────────────
+    bs = cfg["training"]["batch_size"]
+    train_cache, val_cache = build_or_load_cache(
+        model, train_ds, val_ds, out_dir, device, bs,
+        recache=args.recache,
+    )
+
+    train_loader = _make_tensor_loader(train_cache, bs, shuffle=True,  device=device)
+    val_loader   = _make_tensor_loader(val_cache,   bs, shuffle=False, device=device)
+
+    # ── Optimizer & scheduler ─────────────────────────────────────────────
     criterion = HierarchicalLoss(lambda_subtype=cfg["training"]["lambda_subtype"])
     optimizer = torch.optim.AdamW(
         model.trainable_parameters(),
@@ -282,22 +400,21 @@ def main():
         eta_min=cfg["scheduler"]["eta_min"],
     )
 
-    # Resume or start fresh
+    # ── Resume or start fresh ─────────────────────────────────────────────
     epochs = cfg["training"]["epochs"]
-    best_season_acc  = 0.0
-    best_epoch       = 1
+    best_season_acc   = 0.0
+    best_epoch        = 1
     epochs_no_improve = 0
-    history          = []
-    start_epoch      = 1
+    history           = []
+    start_epoch       = 1
 
     if args.resume:
         start_epoch, history, best_season_acc, best_epoch = \
             load_resume_checkpoint(args.resume, model, optimizer, scheduler, device)
-        epochs_no_improve = best_epoch  # will be recalculated from history if needed
+        epochs_no_improve = best_epoch
 
-    out_best  = os.path.join(out_dir, cfg["output"]["checkpoint_name"])
+    out_best = os.path.join(out_dir, cfg["output"]["checkpoint_name"])
 
-    # Column header
     hdr = (f"{'Ep':>4}  {'TrSzn':>6} {'TrSub':>6} {'TrTot':>7}  "
            f"{'VlSzn':>6} {'VlSub':>6} {'VlTot':>7}  {'LR':>8}")
     print(f"\n{hdr}")
@@ -308,8 +425,8 @@ def main():
     for epoch in range(start_epoch, epochs + 1):
         t0 = time.time()
 
-        tr = train_one_epoch(model, train_loader, optimizer, criterion, device)
-        vl = evaluate(model, test_loader, criterion, device)
+        tr = train_one_epoch(model.head, train_loader, optimizer, criterion)
+        vl = evaluate(model.head, val_loader, criterion)
         scheduler.step(epoch - 1)
 
         lr = optimizer.param_groups[0]["lr"]
@@ -324,8 +441,8 @@ def main():
         # ── Best-model checkpoint ──────────────────────────────────────────
         improved = vl["season_acc"] > best_season_acc
         if improved:
-            best_season_acc = vl["season_acc"]
-            best_epoch      = epoch
+            best_season_acc   = vl["season_acc"]
+            best_epoch        = epoch
             epochs_no_improve = 0
             torch.save({
                 "epoch":       epoch,
@@ -337,7 +454,7 @@ def main():
         else:
             epochs_no_improve += 1
 
-        # ── Per-epoch checkpoint (full state for resuming) ─────────────────
+        # ── Per-epoch checkpoint ───────────────────────────────────────────
         epoch_ckpt = os.path.join(out_dir, f"checkpoint_epoch_{epoch}.pth")
         save_epoch_checkpoint(epoch_ckpt, epoch, model, optimizer, scheduler,
                               history, best_season_acc, best_epoch, cfg)
@@ -353,6 +470,15 @@ def main():
         print(f"       Epoch {epoch}/{epochs} | Season Acc: {vl['season_acc']:.4f} "
               f"| Subtype Acc: {vl['subtype_acc']:.4f} | Best so far: {best_season_acc:.4f}")
 
+        if epoch == start_epoch:
+            remaining = epochs - start_epoch
+            est_total_secs = elapsed * remaining
+            est_mins = int(est_total_secs // 60)
+            est_secs = int(est_total_secs % 60)
+            print(f"       Epoch 1 done in {elapsed:.1f}s. "
+                  f"Estimated remaining: {est_mins}m {est_secs:02d}s "
+                  f"({remaining} epochs left)")
+
         # ── Drive sync every 5 epochs ──────────────────────────────────────
         if args.drive_dir and epoch % 5 == 0:
             sync_to_drive(out_dir, args.drive_dir)
@@ -364,7 +490,6 @@ def main():
             print(f"[EARLY STOP] Best: {best_season_acc:.4f} at epoch {best_epoch}. Stopping.")
             break
 
-    # Final Drive sync
     if args.drive_dir:
         sync_to_drive(out_dir, args.drive_dir)
 
@@ -377,7 +502,7 @@ def main():
     print(f"\n{'='*55}")
     print(f"  Training finished in {elapsed_str}")
     print(f"  Best season acc : {best_season_acc:.4f}  (epoch {best_epoch})")
-    best_sub = next((r['val_subtype_acc'] for r in history if r['epoch'] == best_epoch), 0)
+    best_sub = next((r["val_subtype_acc"] for r in history if r["epoch"] == best_epoch), 0)
     print(f"  Subtype acc     : {best_sub:.4f}  (at same epoch)")
     print(f"  Best checkpoint : {out_best}")
     print(f"{'='*55}")
