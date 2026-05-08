@@ -6,21 +6,27 @@ Backbone: CLIP ViT-B/16 loaded via OpenAI CLIP, then patched with FaRL weights.
          model.visual is used as the frozen feature extractor (feature_dim=512).
          Fallback: ResNeXt50 (torchvision, ImageNet pretrained).
 
+Feature caching: backbone runs once before training, outputs saved to
+results/features_train_farl.pt and results/features_test_farl.pt.
+Each epoch only trains the small classifier head — no ViT forward pass.
+
 Requires:
     pip install git+https://github.com/openai/CLIP.git
 
-Pipeline step: Step 4b — Deep Learning Training (FaRL)
-
 Usage:
     python train_farl.py
+    python train_farl.py --recache   # force re-extraction of features
 
 Outputs:
-    models/farl_model.pth          — best model checkpoint (by val accuracy)
-    results/farl_history.json      — per-epoch loss/accuracy history
-    results/farl_training.png      — training curve plot
-    results/farl_test_report.txt   — classification report on test set
+    models/farl_model.pth              — best model checkpoint (by val accuracy)
+    results/features_train_farl.pt     — cached backbone features (train)
+    results/features_test_farl.pt      — cached backbone features (test)
+    results/farl_history.json          — per-epoch loss/accuracy history
+    results/farl_training.png          — training curve plot
+    results/farl_test_report.txt       — classification report on test set
 """
 
+import argparse
 import os
 import json
 import time
@@ -30,10 +36,13 @@ from collections import Counter
 from pathlib import Path
 
 import torch
+import torch.backends.cudnn
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, TensorDataset
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
+
+torch.backends.cudnn.benchmark = True
 
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.metrics import classification_report, confusion_matrix
@@ -68,6 +77,9 @@ ETA_MIN     = 1e-5
 
 FARL_FEATURE_DIM    = 512   # CLIP ViT-B/16 projected output dim
 RESNEXT_FEATURE_DIM = 2048  # ResNeXt50 output features
+
+CACHE_TRAIN = "results/features_train_farl.pt"
+CACHE_TEST  = "results/features_test_farl.pt"
 
 # ---------------------------------------------------------------------------
 # DEVICE
@@ -124,6 +136,65 @@ resnext_val_transform = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
 ])
+
+
+# ---------------------------------------------------------------------------
+# FEATURE CACHING
+# ---------------------------------------------------------------------------
+
+@torch.no_grad()
+def _extract_features(backbone, loader, device, flatten=False):
+    all_feats, all_labels = [], []
+    for images, labels in loader:
+        images = images.to(device).float()
+        feats  = backbone(images)
+        if flatten:
+            feats = feats.view(feats.size(0), -1)
+        all_feats.append(feats.cpu())
+        all_labels.append(labels)
+    return torch.cat(all_feats), torch.cat(all_labels)
+
+
+def build_or_load_cache(model, backbone_name, train_loader, test_loader,
+                        device, recache=False):
+    """
+    Cache frozen backbone features once. Returns train/test TensorDataset loaders.
+    """
+    need_cache = recache or not (
+        os.path.exists(CACHE_TRAIN) and os.path.exists(CACHE_TEST)
+    )
+    is_resnext = "ResNeXt" in backbone_name
+
+    if need_cache:
+        print("[CACHE] Extracting backbone features (runs once)...")
+        t0 = time.time()
+        model.backbone.eval()
+        tr_feats, tr_labels = _extract_features(
+            model.backbone, train_loader, device, flatten=is_resnext)
+        te_feats, te_labels = _extract_features(
+            model.backbone, test_loader, device, flatten=is_resnext)
+        torch.save({"features": tr_feats, "labels": tr_labels}, CACHE_TRAIN)
+        torch.save({"features": te_feats, "labels": te_labels}, CACHE_TEST)
+        elapsed = time.time() - t0
+        print(f"[CACHE] Done in {elapsed:.1f}s. "
+              f"Train: {len(tr_feats)} | Test: {len(te_feats)} | "
+              f"Feature dim: {tr_feats.shape[1]}")
+    else:
+        tr = torch.load(CACHE_TRAIN, map_location="cpu")
+        te = torch.load(CACHE_TEST,  map_location="cpu")
+        tr_feats,  tr_labels = tr["features"], tr["labels"]
+        te_feats,  te_labels = te["features"], te["labels"]
+        print(f"[CACHE] Loaded cached features. "
+              f"Train: {len(tr_feats)} | Test: {len(te_feats)} | "
+              f"Feature dim: {tr_feats.shape[1]}")
+
+    # Move features to device for fast iteration
+    tr_ds = TensorDataset(tr_feats.to(device), tr_labels.to(device))
+    te_ds = TensorDataset(te_feats.to(device), te_labels.to(device))
+    return (
+        DataLoader(tr_ds, batch_size=BATCH_SIZE, shuffle=True),
+        DataLoader(te_ds, batch_size=BATCH_SIZE, shuffle=False),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -328,6 +399,64 @@ def get_all_predictions(model, loader, device):
     return np.array(all_labels), np.array(all_preds)
 
 
+def train_one_epoch_cached(head, loader, optimizer, criterion):
+    """Train head for one epoch using pre-cached features (no backbone call)."""
+    head.train()
+    total_loss = 0.0
+    correct    = 0
+    total      = 0
+
+    for features, labels in loader:
+        optimizer.zero_grad()
+        outputs = head(features)
+        loss    = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+
+        total_loss += loss.item() * features.size(0)
+        preds       = outputs.argmax(dim=1)
+        correct    += (preds == labels).sum().item()
+        total      += features.size(0)
+
+    return total_loss / total, correct / total
+
+
+def evaluate_cached(head, loader, criterion):
+    """Evaluate head using pre-cached features (no backbone call)."""
+    head.eval()
+    total_loss = 0.0
+    correct    = 0
+    total      = 0
+
+    with torch.no_grad():
+        for features, labels in loader:
+            outputs = head(features)
+            loss    = criterion(outputs, labels)
+
+            total_loss += loss.item() * features.size(0)
+            preds       = outputs.argmax(dim=1)
+            correct    += (preds == labels).sum().item()
+            total      += features.size(0)
+
+    return total_loss / total, correct / total
+
+
+def get_all_predictions_cached(head, loader):
+    """Collect predictions from a cached-feature TensorDataset loader."""
+    head.eval()
+    all_preds  = []
+    all_labels = []
+
+    with torch.no_grad():
+        for features, labels in loader:
+            outputs = head(features)
+            preds   = outputs.argmax(dim=1).cpu().numpy()
+            all_preds.extend(preds)
+            all_labels.extend(labels.cpu().numpy())
+
+    return np.array(all_labels), np.array(all_preds)
+
+
 # ---------------------------------------------------------------------------
 # PLOTTING
 # ---------------------------------------------------------------------------
@@ -378,6 +507,11 @@ def plot_training_curves(history: dict, best_epoch: int, save_path: str):
 # ---------------------------------------------------------------------------
 
 def main():
+    parser = argparse.ArgumentParser(description="Train FaRL Model A")
+    parser.add_argument("--recache", action="store_true",
+                        help="Force re-extraction of backbone features")
+    args = parser.parse_args()
+
     print("=" * 60)
     print("  ToneFit — FaRL Personal Color Classifier (Model A)")
     print("=" * 60)
@@ -389,14 +523,14 @@ def main():
     os.makedirs("results", exist_ok=True)
 
     # ------------------------------------------------------------------
-    # 2. Load datasets with ImageFolder (recursive — sub-types = same class)
+    # 2. Load datasets — val_transform for both (features are cached once)
     # ------------------------------------------------------------------
     if not os.path.isdir(TRAIN_DIR):
         raise FileNotFoundError(f"Training folder not found: {TRAIN_DIR}")
     if not os.path.isdir(TEST_DIR):
         raise FileNotFoundError(f"Test folder not found: {TEST_DIR}")
 
-    train_dataset = ImageFolder(root=TRAIN_DIR, transform=train_transform)
+    train_dataset = ImageFolder(root=TRAIN_DIR, transform=val_transform)
     test_dataset  = ImageFolder(root=TEST_DIR,  transform=val_transform)
 
     print(f"[INFO] Classes detected: {train_dataset.classes}")
@@ -415,29 +549,26 @@ def main():
     # ------------------------------------------------------------------
     # 3. Compute class weights (handle imbalance)
     # ------------------------------------------------------------------
-    train_labels = [label for _, label in train_dataset.samples]
+    train_labels_list = [label for _, label in train_dataset.samples]
     class_weights = compute_class_weight(
         class_weight="balanced",
         classes=np.array([0, 1, 2, 3]),
-        y=np.array(train_labels),
+        y=np.array(train_labels_list),
     )
     print(f"\n[INFO] Class weights: {dict(zip(SEASONS, class_weights.round(4)))}")
     weight_tensor = torch.tensor(class_weights, dtype=torch.float32).to(device)
 
     # ------------------------------------------------------------------
-    # 4. Build DataLoaders
+    # 4. Raw DataLoaders for feature extraction only
     # ------------------------------------------------------------------
-    train_loader = DataLoader(
-        train_dataset, batch_size=BATCH_SIZE, shuffle=True,
+    train_loader_raw = DataLoader(
+        train_dataset, batch_size=BATCH_SIZE, shuffle=False,
         num_workers=0, pin_memory=(device.type == "cuda"),
     )
-    test_loader = DataLoader(
+    test_loader_raw = DataLoader(
         test_dataset, batch_size=BATCH_SIZE, shuffle=False,
         num_workers=0, pin_memory=(device.type == "cuda"),
     )
-
-    print(f"\n[INFO] Train batches: {len(train_loader)}")
-    print(f"[INFO] Test  batches: {len(test_loader)}")
 
     # ------------------------------------------------------------------
     # 5. Build model
@@ -447,25 +578,30 @@ def main():
     model = model.to(device)
 
     # ------------------------------------------------------------------
-    # 6. Loss, optimizer, scheduler
+    # 6. Cache backbone features → get fast head-only loaders
+    # ------------------------------------------------------------------
+    train_loader, test_loader = build_or_load_cache(
+        model, backbone_name, train_loader_raw, test_loader_raw,
+        device, recache=args.recache,
+    )
+
+    # ------------------------------------------------------------------
+    # 7. Loss, optimizer, scheduler (head parameters only)
     # ------------------------------------------------------------------
     criterion = nn.CrossEntropyLoss(weight=weight_tensor)
-
-    # Only optimize parameters that are NOT frozen (the classifier head)
     optimizer = torch.optim.AdamW(
-        filter(lambda p: p.requires_grad, model.parameters()),
+        model.head.parameters(),
         lr=LR,
         weight_decay=WEIGHT_DECAY,
     )
-
     scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
         optimizer, T_0=T_0, eta_min=ETA_MIN
     )
 
     # ------------------------------------------------------------------
-    # 7. Training loop
+    # 8. Training loop (head only — no backbone forward pass per epoch)
     # ------------------------------------------------------------------
-    print(f"\n[INFO] Starting training for {EPOCHS} epochs...")
+    print(f"\n[INFO] Starting training for {EPOCHS} epochs (head only)...")
     print(f"[INFO] Backbone: {backbone_name}")
     print("-" * 70)
     print(f"{'Epoch':>6}  {'Train Loss':>10}  {'Train Acc':>9}  {'Val Loss':>8}  {'Val Acc':>8}  {'LR':>10}  {'Time':>6}")
@@ -478,77 +614,71 @@ def main():
         "val_acc":    [],
     }
 
-    best_val_acc  = 0.0
-    best_epoch    = 1
+    best_val_acc = 0.0
+    best_epoch   = 1
 
     for epoch in range(1, EPOCHS + 1):
         t_start = time.time()
 
-        # Train
-        train_loss, train_acc = train_one_epoch(model, train_loader, optimizer, criterion, device)
+        train_loss, train_acc = train_one_epoch_cached(model.head, train_loader, optimizer, criterion)
+        val_loss,   val_acc   = evaluate_cached(model.head, test_loader, criterion)
 
-        # Validate (using test set — small pilot study, no separate val split)
-        val_loss, val_acc = evaluate(model, test_loader, criterion, device)
+        scheduler.step(epoch - 1)
 
-        # Step scheduler
-        scheduler.step(epoch - 1)   # CosineAnnealingWarmRestarts expects epoch index
-
-        # Record history
         history["train_loss"].append(round(train_loss, 6))
         history["val_loss"].append(round(val_loss, 6))
         history["train_acc"].append(round(train_acc, 6))
         history["val_acc"].append(round(val_acc, 6))
 
-        # Save best model
         if val_acc > best_val_acc:
             best_val_acc = val_acc
             best_epoch   = epoch
-            torch.save({"backbone": model.backbone.state_dict(), "head": model.head.state_dict()}, MODEL_OUT)
+            torch.save({"backbone": model.backbone.state_dict(),
+                        "head": model.head.state_dict()}, MODEL_OUT)
 
-        elapsed = time.time() - t_start
+        elapsed    = time.time() - t_start
         current_lr = optimizer.param_groups[0]["lr"]
-
-        marker = " <-- best" if epoch == best_epoch else ""
+        marker     = " <-- best" if epoch == best_epoch else ""
         print(
             f"{epoch:>6}  {train_loss:>10.4f}  {train_acc:>9.4f}  "
             f"{val_loss:>8.4f}  {val_acc:>8.4f}  {current_lr:>10.2e}  "
             f"{elapsed:>5.1f}s{marker}"
         )
 
+        if epoch == 1:
+            print(f"[INFO] Estimated total time: {elapsed * EPOCHS / 60:.1f} min")
+
     print("-" * 70)
     print(f"\n[INFO] Training complete. Best val accuracy: {best_val_acc:.4f} at epoch {best_epoch}")
     print(f"[INFO] Best model saved to: {MODEL_OUT}")
 
     # ------------------------------------------------------------------
-    # 8. Save training history
+    # 9. Save training history
     # ------------------------------------------------------------------
-    history["best_epoch"]    = best_epoch
-    history["best_val_acc"]  = round(best_val_acc, 6)
-    history["backbone"]      = backbone_name
-    history["epochs"]        = EPOCHS
-    history["batch_size"]    = BATCH_SIZE
+    history["best_epoch"]   = best_epoch
+    history["best_val_acc"] = round(best_val_acc, 6)
+    history["backbone"]     = backbone_name
+    history["epochs"]       = EPOCHS
+    history["batch_size"]   = BATCH_SIZE
 
     with open(HISTORY_OUT, "w") as f:
         json.dump(history, f, indent=2)
     print(f"[INFO] History saved to: {HISTORY_OUT}")
 
     # ------------------------------------------------------------------
-    # 9. Plot training curves
+    # 10. Plot training curves
     # ------------------------------------------------------------------
     plot_training_curves(history, best_epoch, PLOT_OUT)
 
     # ------------------------------------------------------------------
-    # 10. Final evaluation on test set using best model
+    # 11. Final evaluation on test set using best model
     # ------------------------------------------------------------------
     print(f"\n[INFO] Loading best model for final test evaluation...")
     checkpoint = torch.load(MODEL_OUT, map_location=device)
-    model.backbone.load_state_dict(checkpoint["backbone"])
     model.head.load_state_dict(checkpoint["head"])
-    model.eval()
 
-    all_labels, all_preds = get_all_predictions(model, test_loader, device)
+    all_labels, all_preds = get_all_predictions_cached(model.head, test_loader)
 
-    # Classification report
     report_str = classification_report(
         all_labels, all_preds,
         target_names=SEASONS,
@@ -563,7 +693,6 @@ def main():
     print("=" * 60)
     print(report_str)
 
-    # Confusion matrix (printed as text)
     cm = confusion_matrix(all_labels, all_preds)
     print("Confusion Matrix (rows=actual, cols=predicted):")
     print(f"{'':12s} " + "  ".join(f"{s:>8s}" for s in SEASONS))
@@ -571,15 +700,13 @@ def main():
         row_str = "  ".join(f"{v:>8d}" for v in row)
         print(f"{SEASONS[i]:12s} {row_str}")
 
-    # Highlight Autumn recall (hardest class per literature)
-    autumn_idx = LABEL_MAP["autumn"]
+    autumn_idx     = LABEL_MAP["autumn"]
     autumn_correct = cm[autumn_idx, autumn_idx]
     autumn_total   = cm[autumn_idx].sum()
     autumn_recall  = autumn_correct / autumn_total if autumn_total > 0 else 0.0
     print(f"\n[NOTE] Autumn recall: {autumn_recall:.4f} ({autumn_correct}/{autumn_total})")
     print("       (Autumn is historically the hardest class — track this carefully.)")
 
-    # Save report to file
     with open(REPORT_OUT, "w") as f:
         f.write("ToneFit — FaRL Classifier — Test Report\n")
         f.write("=" * 60 + "\n")
