@@ -1,0 +1,24 @@
+data:
+  train_dir: RGB-M/train
+  test_dir: RGB-M/test
+
+model:
+  checkpoint_path: farl_model.pth
+  feature_dim: 768
+  shared_dim: 384
+  dropout: 0.5
+
+training:
+  epochs: 50
+  batch_size: 64
+  lr: 1.0e-3
+  weight_decay: 1.0e-5
+  lambda_subtype: 1.0
+
+scheduler:
+  T_0: 10
+  eta_min: 1.0e-5
+
+output:
+  checkpoint_dir: results
+  checkpoint_name: best_hierarchical.pth
