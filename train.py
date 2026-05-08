@@ -56,7 +56,6 @@ SUBTYPE_TO_IDX = {s: i for i, s in enumerate(SUBTYPE_CLASSES)}
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD  = [0.229, 0.224, 0.225]
 
-EARLY_STOP_PATIENCE = 10
 
 
 # ── Dataset ───────────────────────────────────────────────────────────────────
@@ -405,17 +404,14 @@ def main():
 
     # ── Resume or start fresh ─────────────────────────────────────────────
     epochs = cfg["training"]["epochs"]
-    best_season_acc   = 0.0
-    best_epoch        = 1
-    epochs_no_improve = 0
-    history           = []
-    start_epoch       = 1
+    best_season_acc = 0.0
+    best_epoch      = 1
+    history         = []
+    start_epoch     = 1
 
     if args.resume:
         start_epoch, history, best_season_acc, best_epoch = \
             load_resume_checkpoint(args.resume, model, optimizer, scheduler, device)
-        epochs_no_improve = best_epoch
-
     out_best = os.path.join(out_dir, cfg["output"]["checkpoint_name"])
 
     hdr = (f"{'Ep':>4}  {'TrSzn':>6} {'TrSub':>6} {'TrTot':>7}  "
@@ -444,9 +440,8 @@ def main():
         # ── Best-model checkpoint ──────────────────────────────────────────
         improved = vl["season_acc"] > best_season_acc
         if improved:
-            best_season_acc   = vl["season_acc"]
-            best_epoch        = epoch
-            epochs_no_improve = 0
+            best_season_acc = vl["season_acc"]
+            best_epoch      = epoch
             torch.save({
                 "epoch":       epoch,
                 "head_state":  model.head.state_dict(),
@@ -454,9 +449,6 @@ def main():
                 "subtype_acc": vl["subtype_acc"],
                 "cfg":         cfg,
             }, out_best)
-        else:
-            epochs_no_improve += 1
-
         # ── Per-epoch checkpoint ───────────────────────────────────────────
         epoch_ckpt = os.path.join(out_dir, f"checkpoint_epoch_{epoch}.pth")
         save_epoch_checkpoint(epoch_ckpt, epoch, model, optimizer, scheduler,
@@ -485,13 +477,6 @@ def main():
         # ── Drive sync every 5 epochs ──────────────────────────────────────
         if args.drive_dir and epoch % 5 == 0:
             sync_to_drive(out_dir, args.drive_dir)
-
-        # ── Early stopping ─────────────────────────────────────────────────
-        if epochs_no_improve >= EARLY_STOP_PATIENCE:
-            print(f"\n[EARLY STOP] Season accuracy did not improve for "
-                  f"{EARLY_STOP_PATIENCE} consecutive epochs.")
-            print(f"[EARLY STOP] Best: {best_season_acc:.4f} at epoch {best_epoch}. Stopping.")
-            break
 
     if args.drive_dir:
         sync_to_drive(out_dir, args.drive_dir)
