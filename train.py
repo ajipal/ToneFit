@@ -303,6 +303,8 @@ def main():
     print(f"\n{hdr}")
     print("-" * len(hdr))
 
+    train_start = time.time()
+
     for epoch in range(start_epoch, epochs + 1):
         t0 = time.time()
 
@@ -366,8 +368,19 @@ def main():
     if args.drive_dir:
         sync_to_drive(out_dir, args.drive_dir)
 
-    print(f"\n[INFO] Best season acc: {best_season_acc:.4f} at epoch {best_epoch}")
-    print(f"[INFO] Best checkpoint: {out_best}")
+    total_secs = time.time() - train_start
+    total_mins, secs = divmod(int(total_secs), 60)
+    total_hrs,  mins = divmod(total_mins, 60)
+    elapsed_str = (f"{total_hrs}h {mins:02d}m {secs:02d}s" if total_hrs
+                   else f"{mins}m {secs:02d}s")
+
+    print(f"\n{'='*55}")
+    print(f"  Training finished in {elapsed_str}")
+    print(f"  Best season acc : {best_season_acc:.4f}  (epoch {best_epoch})")
+    best_sub = next((r['val_subtype_acc'] for r in history if r['epoch'] == best_epoch), 0)
+    print(f"  Subtype acc     : {best_sub:.4f}  (at same epoch)")
+    print(f"  Best checkpoint : {out_best}")
+    print(f"{'='*55}")
 
     hist_path = os.path.join(out_dir, "hierarchical_history.json")
     with open(hist_path, "w") as f:
