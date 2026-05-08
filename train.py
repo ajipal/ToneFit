@@ -384,6 +384,9 @@ def main():
         recache=args.recache,
     )
 
+    feature_dim = train_cache["features"].shape[1]
+    print(f"[INFO] Feature dim: {feature_dim}")
+
     train_loader = _make_tensor_loader(train_cache, bs, shuffle=True,  device=device)
     val_loader   = _make_tensor_loader(val_cache,   bs, shuffle=False, device=device)
 

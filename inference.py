@@ -259,8 +259,8 @@ def load_model(checkpoint_path: str):
 
     model = DeepArmocromiaHierarchical(
         checkpoint_path=backbone_ckpt,
-        feature_dim=512,
-        shared_dim=256,
+        feature_dim=768,
+        shared_dim=384,
         dropout=0.5,
     )
 
