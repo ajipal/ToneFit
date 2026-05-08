@@ -8,35 +8,52 @@ accuracy (0.318) in a single unified model.
 
 ## Repository layout
 ```
-deep_armocromia/
-├── CLAUDE.md                  ← this file
-├── data/
-│   ├── raw/                   ← original Deep Armocromia images + masks
-│   └── processed/             ← 224×224 RGB-masked crops (ready for training)
+ToneFit/
+├── CLAUDE.md                      ← this file
+├── hierarchical_head.py           ← FaRLBackbone + HierarchicalArmocromiaHead +
+│                                     HierarchicalLoss + DeepArmocromiaHierarchical
+├── train.py                       ← hierarchical model training loop
+│                                     (--resume, --drive_dir, early stopping)
+├── train_farl.py                  ← FaRL-64 baseline training (season, 4-class)
+├── evaluate_baseline.py           ← FaRL-64 baseline evaluation (season metrics)
+├── evaluate_hierarchical.py       ← hierarchical model evaluation
+│                                     (season + sub-type metrics, confusion matrices)
 ├── models/
-│   ├── farl_backbone.py       ← frozen FaRL-64 feature extractor wrapper
-│   ├── hierarchical_head.py   ← NEW: two-stage hierarchical classifier
-│   └── baseline.py            ← original flat 2-FC head (for comparison)
-├── train.py                   ← training loop (shared for both models)
-├── evaluate.py                ← evaluation + confusion matrix generation
+│   └── baseline.py                ← flat 2-FC head class (for ablation)
 ├── configs/
-│   ├── baseline.yaml          ← original paper hyperparams
-│   └── hierarchical.yaml      ← new model hyperparams
-├── results/                   ← saved checkpoints + metrics JSON
+│   └── hierarchical.yaml          ← hyperparameters for hierarchical training
+├── RGB-M/
+│   ├── train/                     ← 4,008 images  (season/subtype/ hierarchy)
+│   └── test/                      ← 912 images
+├── results/                       ← checkpoints, metrics JSON, confusion matrix PNGs
+├── ToneFit_Colab.ipynb            ← end-to-end Colab pipeline
 └── requirements.txt
 ```
 
-## Architecture — hierarchical head (the novel contribution)
+## Models
+
+### Model A — FaRL-64 Baseline (flat head, replication)
+```
+FaRL-64 backbone (frozen, ViT-B/16)
+    └── 768-d feature vector
+         └── FC 768 → 384, ReLU, Dropout(0.5) → FC 384 → 4  (Season)
+```
+Trained by `train_farl.py`. Saves to `models/farl_model.pth`.
+Evaluated by `evaluate_baseline.py`.
+
+### Model B — Hierarchical FaRL-64 (novel contribution)
 ```
 FaRL-64 backbone (frozen, ViT-B/16)
     └── 768-d feature vector
          └── Shared FC: 768 → 384, ReLU, Dropout(0.5)
-              ├── Stage 1 head: FC 384 → 4  (Season: Spring/Summer/Autumn/Winter)
-              └── Stage 2 head: FC (384 + 4) → 12  (Sub-Type, conditioned on season logits)
+              ├── Stage 1: FC 384 → 4   (Season: Spring/Summer/Autumn/Winter)
+              └── Stage 2: FC (384+4) → 12  (Sub-Type, conditioned on Season logits)
 ```
-Stage 2 receives the concatenation of the shared 384-d features AND the 4-d
-softmax output from Stage 1. This is the key architectural difference from the
-original paper's flat head.
+Trained by `train.py`. Saves best checkpoint to `results/best_hierarchical.pth`.
+Evaluated by `evaluate_hierarchical.py`.
+
+Stage 2 receives `concat(shared_features[384], stage1_softmax[4]) = 388-d`.
+This is the key architectural difference from the original paper's flat head.
 
 ## Targets to beat (from original paper Tables 2 & 3)
 | Task | Original best | Our target |
@@ -44,37 +61,62 @@ original paper's flat head.
 | Season (4-class) | FaRL-64: 0.554 accuracy | > 0.554 |
 | Sub-Type (12-class) | FaRL-16: 0.318 accuracy | > 0.318 |
 
-## Original paper setup (replicate exactly for fair comparison)
+## Dataset structure
+```
+RGB-M/train/season/subtype/*.png    e.g. RGB-M/train/autumn/deep/10063.png
+RGB-M/test/season/subtype/*.png
+```
+Seasons (4): autumn, spring, summer, winter
+Sub-types (12): deep/soft/warm (autumn), bright/light/warm (spring),
+                cool/light/soft (summer), bright/cool/deep (winter)
+
+## Training — hierarchical model
+```bash
+python train.py --config configs/hierarchical.yaml
+python train.py --config configs/hierarchical.yaml --resume results/checkpoint_epoch_25.pth
+```
+- Joint loss: `total = loss_season + lambda * loss_subtype`  (lambda=1.0)
+- Saves `results/checkpoint_epoch_{N}.pth` every epoch (full optimizer state)
+- Saves `results/best_hierarchical.pth` on season accuracy improvement
+- Early stopping: patience = 10 epochs on season accuracy
+- Optional `--drive_dir PATH`: syncs results/ to Google Drive every 5 epochs
+
+## Training — baseline
+```bash
+python train_farl.py
+```
+Saves to `models/farl_model.pth`.
+
+## Evaluation
+```bash
+python evaluate_baseline.py
+python evaluate_hierarchical.py --checkpoint results/best_hierarchical.pth
+```
+
+## Original paper hyperparameters (used for both models)
 - Backbone: FaRL-Base-Patch16, pretrained on LAION-Face, **weights frozen**
-- Input: RGB-masked face crops, 3×224×224 (hair + skin + eyes only, from Facer masks)
-- Train/test split: 80/20, ~4000 train / ~920 test, no identity overlap
+- Input: RGB-masked face crops, 3×224×224
+- Train/test split: 80/20 (~4,008 train / ~912 test), no identity overlap
 - Optimizer: AdamW (lr=1e-3, weight_decay=1e-5)
 - Scheduler: CosineAnnealingWarmRestarts (T_0=10, eta_min=1e-5)
 - Epochs: 50, batch size: 64
-- Data augmentation: random crop, horizontal flip (p=0.5), color jitter
-  (brightness=0.4, contrast=0.2, saturation=0.2), random sharpness (factor=2, p=0.2)
-- Metrics: accuracy, precision, recall, F1, top-2 (season) / top-3 (sub-type)
-
-## Training strategy for hierarchical model
-- Train both stages jointly with a combined loss:
-  `total_loss = loss_season + lambda * loss_subtype`
-  Start with lambda=1.0, tune if needed.
-- Use the same AdamW + cosine schedule as above.
-- Save best checkpoint by season accuracy (primary metric).
+- Augmentation: RandomResizedCrop(224), HorizontalFlip(p=0.5),
+  ColorJitter(brightness=0.4, contrast=0.2, saturation=0.2),
+  RandomAdjustSharpness(factor=2, p=0.2)
+- Metrics: accuracy, precision, recall, F1 (macro), top-2 (season) / top-3 (sub-type)
 
 ## Environment
 - Python 3.10+
 - PyTorch 2.3.0 + CUDA 12.1
-- timm 0.8.3 (for FaRL backbone loading via pytorch-image-models)
-- torchmetrics 1.4.0
-- GPU: NVIDIA RTX 4070 (8 GB VRAM)
+- timm 0.9.0
+- GPU: NVIDIA RTX 4070 (8 GB VRAM) / Google Colab T4
 
 ## Key conventions
-- Always load FaRL-64 with `model.eval()` and `torch.no_grad()` during feature extraction.
-- FaRL checkpoint key: `farl-base-patch16-64ep` from the official Microsoft repo.
-- All metrics computed with torchmetrics, macro-averaged.
-- Confusion matrices saved as PNG to results/.
-- Do not modify the data preprocessing pipeline — use the existing Facer masks.
+- FaRL backbone always loaded with `model.eval()` and `torch.no_grad()`.
+- `FaRLBackbone` in `hierarchical_head.py` auto-detects checkpoint format:
+  handles CLIP key names (from `train_farl.py` output) and official FaRL keys.
+- All metrics macro-averaged via sklearn.
+- Confusion matrices saved as PNG to `results/`.
 
 ## Paper motivation (cite in writing)
 The original paper conclusion states: *"we will explore those paradigms involving
