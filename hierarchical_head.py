@@ -4,17 +4,17 @@ hierarchical_head.py
 Two-stage hierarchical classifier head for Deep Armocromia.
 
 Architecture:
-    FaRL-64 features (768-d, frozen)
-        └── Shared FC: 768 → 384, ReLU, Dropout(0.5)
-             ├── Stage 1: FC 384 → 4   (Season classification)
-             └── Stage 2: FC 388 → 12  (Sub-Type, conditioned on Stage 1 softmax output)
+    FaRL-64 backbone: CLIP encode_image() → 512-d (frozen, same as baseline)
+        └── Shared FC: 512 → 256, ReLU, Dropout(0.5)
+             ├── Stage 1: FC 256 → 4   (Season classification)
+             └── Stage 2: FC 260 → 12  (Sub-Type, conditioned on Stage 1 softmax output)
 
 The key novelty over the original paper:
-    Stage 2 input = concat(shared_features[384], stage1_softmax[4]) = 388-d
+    Stage 2 input = concat(shared_features[256], stage1_softmax[4]) = 260-d
     This lets the sub-type head explicitly condition on the predicted season.
 
 Usage:
-    model = HierarchicalArmocromiaHead(feature_dim=768)
+    model = HierarchicalArmocromiaHead(feature_dim=512)
     season_logits, subtype_logits = model(features)
 
     # Joint loss
@@ -48,16 +48,17 @@ class HierarchicalArmocromiaHead(nn.Module):
     Two-stage hierarchical head on top of a frozen FaRL-64 backbone.
 
     Args:
-        feature_dim (int): Output dimension of the FaRL backbone (default: 768).
-        shared_dim (int): Hidden dimension of the shared FC layer (default: 384,
+        feature_dim (int): Output dimension of the FaRL backbone (default: 512,
+                           matching CLIP encode_image() used by train_farl.py).
+        shared_dim (int): Hidden dimension of the shared FC layer (default: 256,
                           i.e. feature_dim // 2, matching the original paper).
         dropout (float): Dropout probability (default: 0.5, matching original paper).
     """
 
     def __init__(
         self,
-        feature_dim: int = 768,
-        shared_dim: int = 384,
+        feature_dim: int = 512,
+        shared_dim: int = 256,
         dropout: float = 0.5,
     ):
         super().__init__()
@@ -73,7 +74,7 @@ class HierarchicalArmocromiaHead(nn.Module):
         self.stage1 = nn.Linear(shared_dim, NUM_SEASONS)
 
         # Stage 2 — Sub-type classification (12 classes)
-        # Input: shared features (384) + season softmax (4) = 388
+        # Input: shared features (256) + season softmax (4) = 260
         self.stage2 = nn.Linear(shared_dim + NUM_SEASONS, NUM_SUBTYPES)
 
     def forward(
@@ -94,7 +95,7 @@ class HierarchicalArmocromiaHead(nn.Module):
             subtype_logits (Tensor): Shape [B, 12]
         """
         # Shared compression
-        shared = self.shared(x)                         # [B, 384]
+        shared = self.shared(x)                         # [B, 256]
 
         # Stage 1 — season
         season_logits = self.stage1(shared)             # [B, 4]
@@ -109,7 +110,7 @@ class HierarchicalArmocromiaHead(nn.Module):
             season_cond = F.softmax(season_logits, dim=1)   # [B, 4]
 
         # Concatenate shared features + season conditioning
-        stage2_input = torch.cat([shared, season_cond], dim=1)  # [B, 388]
+        stage2_input = torch.cat([shared, season_cond], dim=1)  # [B, 260]
 
         # Stage 2 — sub-type
         subtype_logits = self.stage2(stage2_input)      # [B, 12]
@@ -203,7 +204,10 @@ class FaRLBackbone(nn.Module):
       2. train_farl.py output           — weights under 'backbone' key, CLIP key names
       3. Raw CLIP visual encoder        — CLIP key names at the top level
 
-    Returns the [CLS] token embedding (768-d).
+    Returns the [CLS] token embedding (768-d) before CLIP's projection layer.
+    NOTE: DeepArmocromiaHierarchical does NOT use FaRLBackbone — it uses the
+    same CLIP encode_image() path as train_farl.py (512-d output). FaRLBackbone
+    is kept here for standalone use only.
     """
 
     def __init__(self, checkpoint_path: str | None = None):
@@ -272,8 +276,8 @@ class DeepArmocromiaHierarchical(nn.Module):
     def __init__(
         self,
         checkpoint_path: str | None = None,
-        feature_dim: int = 768,
-        shared_dim: int = 384,
+        feature_dim: int = 512,
+        shared_dim: int = 256,
         dropout: float = 0.5,
     ):
         super().__init__()
@@ -298,8 +302,8 @@ class DeepArmocromiaHierarchical(nn.Module):
 if __name__ == "__main__":
     print("Running smoke test...")
 
-    head = HierarchicalArmocromiaHead(feature_dim=768)
-    dummy_features = torch.randn(8, 768)    # batch of 8
+    head = HierarchicalArmocromiaHead(feature_dim=512)
+    dummy_features = torch.randn(8, 512)    # batch of 8
 
     season_logits, subtype_logits = head(dummy_features)
 
