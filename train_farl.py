@@ -510,7 +510,7 @@ def main():
     parser = argparse.ArgumentParser(description="Train FaRL Model A")
     parser.add_argument("--recache", action="store_true",
                         help="Force re-extraction of backbone features")
-    args = parser.parse_args()
+    args, _ = parser.parse_known_args()  # ignore Jupyter kernel args
 
     print("=" * 60)
     print("  ToneFit — FaRL Personal Color Classifier (Model A)")
