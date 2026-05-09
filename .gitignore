@@ -1,8 +1,8 @@
 # Model weights (too large for GitHub — store locally or on Google Drive)
-models/*.pth
-models/*.pt
-models/*.pkl
-models/*.h5
+*.pth
+*.pt
+*.pkl
+*.h5
 
 # Training outputs
 results/

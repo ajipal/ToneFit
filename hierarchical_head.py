@@ -29,12 +29,12 @@ import torch.nn.functional as F
 
 # ── Label definitions (must match dataset) ────────────────────────────────────
 
-SEASON_CLASSES = ["Autumn", "Summer", "Winter", "Spring"]          # 4 classes
+SEASON_CLASSES = ["autumn", "spring", "summer", "winter"]          # 4 classes
 SUBTYPE_CLASSES = [                                                 # 12 classes
-    "Autumn_Deep", "Autumn_Soft", "Autumn_Warm",
-    "Summer_Cool", "Summer_Light", "Summer_Soft",
-    "Winter_Bright", "Winter_Cool", "Winter_Deep",
-    "Spring_Bright", "Spring_Light", "Spring_Warm",
+    "autumn_deep", "autumn_soft", "autumn_warm",
+    "spring_bright", "spring_light", "spring_warm",
+    "summer_cool", "summer_light", "summer_soft",
+    "winter_bright", "winter_cool", "winter_deep",
 ]
 
 NUM_SEASONS = len(SEASON_CLASSES)    # 4

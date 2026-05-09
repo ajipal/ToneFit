@@ -30,6 +30,3 @@ imagehash>=4.3.0
 
 # Face landmark extraction (used in preprocess.py for skin region masking)
 mediapipe>=0.10.0
-
-# Data collection only — not needed for training or the app
-icrawler>=0.6.6
