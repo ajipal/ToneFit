@@ -30,12 +30,14 @@ import time
 from pathlib import Path
 from collections import Counter
 
+import numpy as np
 import torch
 import torch.backends.cudnn
 from torch.utils.data import DataLoader, Dataset, TensorDataset
 from torchvision import transforms
 from PIL import Image
 import yaml
+from sklearn.metrics import classification_report, confusion_matrix
 
 from hierarchical_head import DeepArmocromiaHierarchical, HierarchicalLoss
 
@@ -291,6 +293,24 @@ def evaluate(head, loader, criterion):
     }
 
 
+@torch.no_grad()
+def get_all_predictions(head, loader):
+    """Collect season and subtype predictions from a cached-feature loader."""
+    head.eval()
+    season_true, season_pred = [], []
+    sub_true,    sub_pred    = [], []
+
+    for features, season_labels, subtype_labels in loader:
+        szn_logits, sub_logits = head(features, hard_season=False)
+        season_pred.extend(szn_logits.argmax(1).cpu().numpy())
+        sub_pred.extend(sub_logits.argmax(1).cpu().numpy())
+        season_true.extend(season_labels.cpu().numpy())
+        sub_true.extend(subtype_labels.cpu().numpy())
+
+    return (np.array(season_true), np.array(season_pred),
+            np.array(sub_true),    np.array(sub_pred))
+
+
 # ── Checkpoint helpers ────────────────────────────────────────────────────────
 
 def save_epoch_checkpoint(path, epoch, model, optimizer, scheduler,
@@ -499,6 +519,50 @@ def main():
     with open(hist_path, "w") as f:
         json.dump(history, f, indent=2)
     print(f"[INFO] History: {hist_path}")
+
+    # ── Final classification reports (mirrors train_farl.py output) ───────
+    print(f"\n[INFO] Loading best checkpoint for final evaluation...")
+    best_ckpt = torch.load(out_best, map_location=device)
+    model.head.load_state_dict(best_ckpt["head_state"])
+
+    szn_true, szn_pred, sub_true, sub_pred = get_all_predictions(model.head, val_loader)
+
+    # Season report
+    print("\n" + "=" * 60)
+    print("  Final Test Classification Report — Season (4-class)")
+    print("=" * 60)
+    print(f"  Best Epoch: {best_epoch}  |  Best Season Acc: {best_season_acc:.4f}")
+    print("=" * 60)
+    print(classification_report(szn_true, szn_pred, target_names=SEASON_CLASSES, digits=4))
+
+    szn_cm = confusion_matrix(szn_true, szn_pred)
+    print("Confusion Matrix — Season (rows=actual, cols=predicted):")
+    print(f"{'':12s} " + "  ".join(f"{s:>8s}" for s in SEASON_CLASSES))
+    for i, row in enumerate(szn_cm):
+        print(f"{SEASON_CLASSES[i]:12s} " + "  ".join(f"{v:>8d}" for v in row))
+
+    autumn_idx = SEASON_CLASSES.index("autumn")
+    aut_correct = szn_cm[autumn_idx, autumn_idx]
+    aut_total   = szn_cm[autumn_idx].sum()
+    print(f"\n[NOTE] Autumn recall: {aut_correct/aut_total:.4f} ({aut_correct}/{aut_total})")
+    print("       (Autumn is historically the hardest class — track this carefully.)")
+
+    # Sub-type report
+    print("\n" + "=" * 60)
+    print("  Final Test Classification Report — Sub-Type (12-class)")
+    print("=" * 60)
+    print(f"  Best Epoch: {best_epoch}  |  Best SubType Acc: {best_sub:.4f}")
+    print("=" * 60)
+    print(classification_report(sub_true, sub_pred, target_names=SUBTYPE_CLASSES, digits=4))
+
+    sub_cm = confusion_matrix(sub_true, sub_pred)
+    print("Confusion Matrix — Sub-Type (rows=actual, cols=predicted):")
+    print(f"{'':16s} " + " ".join(f"{s.split('_')[1]:>7s}" for s in SUBTYPE_CLASSES))
+    for i, row in enumerate(sub_cm):
+        label = SUBTYPE_CLASSES[i]
+        print(f"{label:16s} " + " ".join(f"{v:>7d}" for v in row))
+
+    print("\n[DONE] Hierarchical training pipeline finished successfully.")
 
 
 if __name__ == "__main__":
