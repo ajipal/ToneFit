@@ -434,10 +434,11 @@ def main():
             load_resume_checkpoint(args.resume, model, optimizer, scheduler, device)
     out_best = os.path.join(out_dir, cfg["output"]["checkpoint_name"])
 
-    hdr = (f"{'Ep':>4}  {'TrSzn':>6} {'TrSub':>6} {'TrTot':>7}  "
-           f"{'VlSzn':>6} {'VlSub':>6} {'VlTot':>7}  {'LR':>8}")
-    print(f"\n{hdr}")
-    print("-" * len(hdr))
+    print(f"\n[INFO] Starting training for {epochs} epochs (head only)...")
+    print("-" * 80)
+    print(f"{'Epoch':>6}  {'Loss':>8}  {'Tr Szn':>7}  {'Tr Sub':>7}  "
+          f"{'Val Szn':>8}  {'Val Sub':>8}  {'LR':>10}  {'Time':>6}")
+    print("-" * 80)
 
     train_start = time.time()
 
@@ -476,23 +477,19 @@ def main():
 
         # ── Console output ─────────────────────────────────────────────────
         elapsed = time.time() - t0
-        marker  = " ← best" if improved else ""
+        marker  = " <-- best" if improved else ""
         print(
-            f"{epoch:>4}  {tr['season_acc']:>6.4f} {tr['subtype_acc']:>6.4f} {tr['total_loss']:>7.4f}"
-            f"  {vl['season_acc']:>6.4f} {vl['subtype_acc']:>6.4f} {vl['total_loss']:>7.4f}"
-            f"  {lr:.2e}{marker}  ({elapsed:.1f}s)"
+            f"{epoch:>6}  {tr['total_loss']:>8.4f}  {tr['season_acc']:>7.4f}  {tr['subtype_acc']:>7.4f}  "
+            f"{vl['season_acc']:>8.4f}  {vl['subtype_acc']:>8.4f}  {lr:>10.2e}  "
+            f"{elapsed:>5.1f}s{marker}"
         )
-        print(f"       Epoch {epoch}/{epochs} | Season Acc: {vl['season_acc']:.4f} "
-              f"| Subtype Acc: {vl['subtype_acc']:.4f} | Best so far: {best_season_acc:.4f}")
 
         if epoch == start_epoch:
             remaining = epochs - start_epoch
             est_total_secs = elapsed * remaining
             est_mins = int(est_total_secs // 60)
             est_secs = int(est_total_secs % 60)
-            print(f"       Epoch 1 done in {elapsed:.1f}s. "
-                  f"Estimated remaining: {est_mins}m {est_secs:02d}s "
-                  f"({remaining} epochs left)")
+            print(f"[INFO] Estimated total time: {elapsed * epochs / 60:.1f} min")
 
         # ── Drive sync every 5 epochs ──────────────────────────────────────
         if args.drive_dir and epoch % 5 == 0:
@@ -507,13 +504,12 @@ def main():
     elapsed_str = (f"{total_hrs}h {mins:02d}m {secs:02d}s" if total_hrs
                    else f"{mins}m {secs:02d}s")
 
-    print(f"\n{'='*55}")
-    print(f"  Training finished in {elapsed_str}")
-    print(f"  Best season acc : {best_season_acc:.4f}  (epoch {best_epoch})")
+    print("-" * 80)
     best_sub = next((r["val_subtype_acc"] for r in history if r["epoch"] == best_epoch), 0)
-    print(f"  Subtype acc     : {best_sub:.4f}  (at same epoch)")
-    print(f"  Best checkpoint : {out_best}")
-    print(f"{'='*55}")
+    print(f"\n[INFO] Training complete.")
+    print(f"[INFO] Best val season accuracy: {best_season_acc:.4f} at epoch {best_epoch}")
+    print(f"[INFO] Sub-type accuracy at best epoch: {best_sub:.4f}")
+    print(f"[INFO] Best model saved to: {out_best}")
 
     hist_path = os.path.join(out_dir, "hierarchical_history.json")
     with open(hist_path, "w") as f:
