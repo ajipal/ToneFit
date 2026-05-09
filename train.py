@@ -558,6 +558,31 @@ def main():
         label = SUBTYPE_CLASSES[i]
         print(f"{label:16s} " + " ".join(f"{v:>7d}" for v in row))
 
+    # Save report file (mirrors train_farl.py)
+    report_path = os.path.join(out_dir, "hierarchical_test_report.txt")
+    szn_report = classification_report(szn_true, szn_pred, target_names=SEASON_CLASSES, digits=4)
+    sub_report = classification_report(sub_true, sub_pred, target_names=SUBTYPE_CLASSES, digits=4)
+    with open(report_path, "w") as f:
+        f.write("ToneFit — Hierarchical FaRL-64 — Test Report\n")
+        f.write("=" * 60 + "\n")
+        f.write(f"Best Epoch     : {best_epoch}\n")
+        f.write(f"Best Season Acc: {best_season_acc:.4f}\n")
+        f.write(f"SubType Acc    : {best_sub:.4f}\n")
+        f.write("=" * 60 + "\n\n")
+        f.write("Season Classification Report:\n")
+        f.write(szn_report)
+        f.write("\nSeason Confusion Matrix (rows=actual, cols=predicted):\n")
+        f.write(f"{'':12s} " + "  ".join(f"{s:>8s}" for s in SEASON_CLASSES) + "\n")
+        for i, row in enumerate(szn_cm):
+            f.write(f"{SEASON_CLASSES[i]:12s} " + "  ".join(f"{v:>8d}" for v in row) + "\n")
+        f.write("\n\nSub-Type Classification Report:\n")
+        f.write(sub_report)
+        f.write("\nSub-Type Confusion Matrix (rows=actual, cols=predicted):\n")
+        f.write(f"{'':16s} " + " ".join(f"{s.split('_')[1]:>7s}" for s in SUBTYPE_CLASSES) + "\n")
+        for i, row in enumerate(sub_cm):
+            f.write(f"{SUBTYPE_CLASSES[i]:16s} " + " ".join(f"{v:>7d}" for v in row) + "\n")
+    print(f"[INFO] Test report saved to: {report_path}")
+
     print("\n[DONE] Hierarchical training pipeline finished successfully.")
 
 

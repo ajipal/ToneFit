@@ -169,6 +169,25 @@ def load_model_c():
     }
 
 
+def load_hierarchical():
+    """Hierarchical FaRL-64 — reads hierarchical_history.json + hierarchical_test_report.txt."""
+    h = _load_json("results/hierarchical_history.json")
+    if h is None:
+        return None
+
+    best = max(h, key=lambda r: r.get("val_season_acc", 0))
+    macro_f1 = _extract_macro_f1_from_report("results/hierarchical_test_report.txt")
+
+    return {
+        "Model":       "Hierarchical FaRL-64 (ours)",
+        "Source":      "This study",
+        "Season Acc":  best.get("val_season_acc"),
+        "F1 (macro)":  macro_f1,
+        "SubType Acc": best.get("val_subtype_acc"),
+        "Top-3 Acc":   NA,
+    }
+
+
 def load_dinov2():
     """DINOv2 fallback model — reads dinov2_history.json if present."""
     h = _load_json("results/dinov2_history.json")
@@ -275,7 +294,7 @@ def main():
     rows = list(PAPER_BASELINES)  # start with paper baselines
 
     # Load our trained models (skip gracefully if not yet trained)
-    for loader in [load_model_a, load_model_b, load_model_c, load_dinov2]:
+    for loader in [load_model_a, load_model_b, load_model_c, load_hierarchical, load_dinov2]:
         result = loader()
         if result is not None:
             rows.append(result)
