@@ -3,7 +3,7 @@ data:
   test_dir: RGB-M/test
 
 model:
-  checkpoint_path: farl_model.pth
+  checkpoint_path: models/farl_model.pth
   feature_dim: 768
   shared_dim: 384
   dropout: 0.5
