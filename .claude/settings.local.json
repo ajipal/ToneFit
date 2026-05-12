@@ -4,7 +4,12 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(python collectdata.py)"
+      "Bash(python collectdata.py)",
+      "Bash(cd \"a:\\\\Projects\\\\New folder\\\\ToneFit\" && git show origin/twelve-season:train_farl.py > /tmp/train_farl_twelve.py && echo \"done\")",
+      "PowerShell(cd \"a:\\\\Projects\\\\New folder\\\\ToneFit\"; git show origin/twelve-season:train_farl.py | Out-File -Encoding utf8 \"$env:TEMP\\\\train_farl_twelve.py\"; Write-Host \"done\")"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
     ]
   }
 }
