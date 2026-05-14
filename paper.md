@@ -132,6 +132,57 @@ shared FC(512→256) → ReLU → Dropout(0.5)
 
 Both heads receive the same shared intermediate representation and are trained simultaneously. Only the classifier heads are trained — the backbone parameters receive no gradient updates. The model is optimized using AdamW (lr=1e-3, weight_decay=1e-5) with a CosineAnnealingWarmRestarts scheduler (T_0=10, eta_min=1e-5). Training runs for 50 epochs with batch size 64. A joint CrossEntropyLoss is used: the season loss and sub-type loss are summed each step, with independent balanced class weights for each head. The best model checkpoint is selected by peak validation season accuracy.
 
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     INPUT: Face Image (224 × 224)                   │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│              PATCH EMBEDDING  (frozen)                              │
+│   Divide image into 196 non-overlapping 16×16 patches               │
+│   Linear projection → 512-d token embeddings                        │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│        FaRL BACKBONE — CLIP ViT-B/16  (frozen, no gradients)        │
+│                                                                     │
+│   Block 1 → Block 2 → … → Block 12                                  │
+│   Multi-Head Self-Attention + Feed-Forward per block                │
+│   Pretrained on 50M face-text pairs (LAION-Face, FaRL-ep64)         │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                        [CLS] token
+                               │
+                    512-d face embedding
+                               │
+                  ┌────────────┴─────────────┐
+                  │    Feature Cache (.pt)    │
+                  │  computed once per split  │
+                  └────────────┬─────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│            SHARED HEAD  (trainable)                                 │
+│        FC(512 → 256)  →  ReLU  →  Dropout(0.5)                     │
+└──────────────┬──────────────────────────────┬──────────────────────┘
+               │                              │
+               ▼                              ▼
+  ┌────────────────────┐          ┌─────────────────────┐
+  │   SEASON HEAD      │          │   SUB-TYPE HEAD      │
+  │   FC(256 → 4)      │          │   FC(256 → 12)       │
+  │   CE Loss (bal.)   │          │   CE Loss (bal.)     │
+  └────────────────────┘          └─────────────────────┘
+               │                              │
+               ▼                              ▼
+     4-Season Prediction           12-Sub-type Prediction
+   (Spring / Summer /            (e.g., Warm Spring /
+    Autumn / Winter)               Deep Winter / …)
+```
+
+**Figure X.** FaRL flat two-head system architecture. The backbone is frozen and runs once per dataset split to cache 512-d embeddings. Only the shared head and two output heads are trained.
+
 | Configuration | Value |
 |---|---|
 | Backbone | FaRL (CLIP ViT-B/16, feature_dim=512) |
@@ -149,6 +200,70 @@ Both heads receive the same shared intermediate representation and are trained s
 
 **Model B — SVM (Classical Computer Vision Classifier).**
 The Support Vector Machine (SVM) with Radial Basis Function (RBF) kernel serves as the classical computer vision baseline. SVM was selected because it is well-suited to compact handcrafted feature vectors, has demonstrated effectiveness for color-based facial classification tasks in prior literature (Lee et al., 2021), and requires no GPU — enabling a comparison of deep learning versus classical approaches across both performance and computational cost. Hyperparameter optimization is performed using GridSearchCV with 5-fold cross-validation on the training set. The search covers C=[0.1, 1, 10, 100] and gamma=['scale', 'auto'], and the best configuration (C=100, gamma='scale') is used to retrain the final model on the full training set.
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     INPUT: Face Image (224 × 224)                   │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                   FACE SEGMENTATION                                 │
+│   Apply Facer masks (RGB-M format) — isolate skin, hair,            │
+│   eyebrows, eyes, nose, mouth regions                               │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+               ┌───────────────┴───────────────┐
+               ▼                               ▼
+┌──────────────────────────┐     ┌─────────────────────────┐
+│   RGB → CIELab           │     │   RGB → HSV              │
+│   L*, a*, b* channels    │     │   H, S, V channels       │
+└──────────────┬───────────┘     └─────────────┬───────────┘
+               │                               │
+               ▼                               ▼
+┌──────────────────────────┐     ┌─────────────────────────┐
+│  6 CIELab statistics     │     │  3 HSV statistics        │
+│  L*_mean, a*_mean,       │     │  H_mean, S_mean, V_mean  │
+│  b*_mean, L*_std,        │     └─────────────┬───────────┘
+│  a*_std,  b*_std         │                   │
+└──────────────┬───────────┘                   │
+               │                               │
+               └───────────────┬───────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                   ITA SCORE  (derived)                              │
+│   ITA = arctan((L*_mean − 50) / b*_mean) × (180/π)                 │
+│   Encodes skin undertone + lightness as a single scalar             │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                   FEATURE SELECTION  (10 → 7)                       │
+│   Keep: L*_mean, a*_mean, b*_mean, ITA, H_mean, S_mean, V_mean      │
+│   Drop:  L*_std, a*_std, b*_std  (low discriminative contribution)  │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                   NORMALIZATION                                     │
+│   MinMaxScaler → [0, 1]  (fitted on train set only)                 │
+│   Applied to train and test sets to prevent data leakage            │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│            SVM CLASSIFIER  (RBF kernel)                             │
+│   GridSearchCV: C=[0.1,1,10,100], gamma=[scale,auto], 5-fold CV     │
+│   Best config: C=100, gamma=scale, class_weight=balanced            │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                               ▼
+                     4-Season Prediction
+                (Spring / Summer / Autumn / Winter)
+```
+
+**Figure Y.** SVM classical computer vision pipeline. Explicit color features are extracted from CIELab and HSV color spaces, combined with the ITA score, and reduced to 7 dimensions before being fed into the RBF-kernel SVM classifier.
 
 | Configuration | Value |
 |---|---|
