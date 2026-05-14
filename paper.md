@@ -171,15 +171,11 @@ Both models are evaluated using the same set of metrics to ensure a consistent a
 
 | Metric | Applies To | Description |
 |---|---|---|
-| Accuracy (4-season) | FaRL, SVM | Proportion of correctly classified samples out of total test samples for the 4-class season task. |
+| Accuracy | FaRL, SVM | Proportion of correctly classified samples out of total test samples for the 4-class season task. |
 | Weighted Precision | FaRL, SVM | Proportion of correct positive predictions per class, averaged with class-size weighting. |
 | Weighted Recall | FaRL, SVM | Proportion of actual positives correctly identified per class, averaged with class-size weighting. |
-| Weighted F1-Score | FaRL, SVM | Harmonic mean of weighted precision and recall. Primary comparison metric in this study. |
-| Top-2 Accuracy | FaRL, SVM | Proportion of samples where the correct season appears in the model's top 2 predictions. |
-| Sub-Type Accuracy (12-class) | FaRL only | Proportion of correctly classified samples for the 12-subtype task, predicted by the joint subtype head. |
-| Top-3 Accuracy (12-class) | FaRL only | Proportion of samples where the correct sub-type appears in the model's top 3 predictions. |
+| Weighted F1-Score | FaRL, SVM | Harmonic mean of weighted precision and recall. |
 | Confusion Matrix | FaRL, SVM | N×N matrix showing predicted vs. actual class labels across all four seasons. |
-| Autumn Recall | FaRL, SVM | Per-class recall for Autumn specifically, tracked as the known hardest class. |
 
 **Table 8.** Performance metrics used for model evaluation in this study.
 
@@ -195,10 +191,10 @@ Both trained models are applied to their respective held-out test sets following
 
 Table 9 presents the test set performance for both models.
 
-| Model | Accuracy | Wtd. F1 | Top-2 Acc. | Autumn Recall |
+| Model | Accuracy | Precision | Recall | F1 |
 |---|---|---|---|---|
-| FaRL | 0.564 | 0.555 | 0.838 | 0.436 |
-| SVM | 0.457 | 0.451 | 0.735 | 0.531 |
+| FaRL | 0.564 | 0.567 | 0.564 | 0.555 |
+| SVM | 0.457 | 0.479 | 0.457 | 0.451 |
 
 **Table 9.** Test set performance of FaRL and SVM on the Deep Armocromia dataset.
 
@@ -206,7 +202,7 @@ Table 9 presents the test set performance for both models.
 
 **Figure 2.** Grouped bar chart comparing accuracy and weighted F1-score for FaRL and SVM on the 4-season classification task.
 
-FaRL achieved an overall accuracy of 0.564 and a weighted F1-score of 0.555 on 912 test images. Top-2 accuracy reached 0.838, indicating that the correct season appears in the top two predictions for over 83% of samples. The SVM achieved an accuracy of 0.457 and weighted F1 of 0.451 on 668 test images, performing below FaRL on all aggregate metrics. However, the SVM recorded a higher Autumn recall (0.531) than FaRL (0.436).
+FaRL achieved an overall accuracy of 0.564, weighted precision of 0.567, weighted recall of 0.564, and weighted F1-score of 0.555 on 912 test images. The SVM achieved an accuracy of 0.457, weighted precision of 0.479, weighted recall of 0.457, and weighted F1 of 0.451 on 668 test images, performing below FaRL on all metrics.
 
 Table 10 presents per-class precision, recall, and F1-score for both models.
 
@@ -239,11 +235,11 @@ During model development, FaRL's best validation accuracy was reached at epoch 6
 
 Across both models, Winter is the most accurately classified season. FaRL achieves a Winter F1 of 0.695 and recall of 0.795, correctly identifying 210 of 264 Winter test samples. The SVM achieves a Winter F1 of 0.548. Winter's high contrast, cool undertone, and clear coloring produces the most separable representations in both the deep embedding space and the color feature space, making it the most reliably classified season regardless of approach.
 
-The ITA score and a*_mean are the most discriminative features in the SVM pipeline, directly encoding the warm/cool undertone axis. The SVM's higher Autumn recall (0.531 vs. FaRL's 0.436) demonstrates that these explicit undertone features provide an advantage on warm-season detection that FaRL's learned embeddings do not fully capture. Spring is the hardest class for both models — FaRL Spring F1 is 0.464 and SVM Spring F1 is only 0.335 — because Spring's warm-light profile overlaps with both Autumn (warm undertone) and Summer/Winter (lighter tone).
+The ITA score and a*_mean are the most discriminative features in the SVM pipeline, directly encoding the warm/cool undertone axis. Despite lower overall accuracy, the SVM achieves a per-class recall on Autumn (0.531) that is higher than FaRL's (0.436), demonstrating that explicit undertone features retain a targeted advantage for warm-season detection. Spring is the hardest class for both models — FaRL Spring F1 is 0.464 and SVM Spring F1 is only 0.335 — because Spring's warm-light profile overlaps with both Autumn (warm undertone) and Summer/Winter (lighter tone).
 
 #### Comparison Between FaRL and SVM
 
-FaRL outperforms the SVM on all aggregate metrics: accuracy (0.564 vs. 0.457), weighted F1 (0.555 vs. 0.451), and Top-2 accuracy (0.838 vs. 0.735). The performance gap of 0.107 accuracy points and 0.104 F1 points exceeds the 0.02 significance threshold adopted in this study, confirming that FaRL substantially outperforms the SVM on overall season classification. The SVM's superior Autumn recall (0.531 vs. 0.436) is an important nuance — it shows that interpretable color features retain a targeted advantage for warm undertone detection even when overall accuracy is lower. This indicates that the 7-dimensional handcrafted color feature vector cannot match the representational capacity of a face-specialized Vision Transformer on aggregate classification, but retains competitive value on specific class boundaries where explicit color encoding is most discriminative.
+FaRL outperforms the SVM on all primary metrics: accuracy (0.564 vs. 0.457), weighted precision (0.567 vs. 0.479), weighted recall (0.564 vs. 0.457), and weighted F1 (0.555 vs. 0.451). The performance gap of 0.107 accuracy points and 0.104 F1 points exceeds the 0.02 significance threshold adopted in this study, confirming that FaRL substantially outperforms the SVM on overall season classification. This indicates that the 7-dimensional handcrafted color feature vector cannot match the representational capacity of a face-specialized Vision Transformer, though the SVM retains competitive per-class recall on Autumn where explicit undertone encoding is most discriminative.
 
 #### Other Findings and Discovered Knowledge
 
