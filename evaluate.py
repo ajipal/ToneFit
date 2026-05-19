@@ -1,4 +1,5 @@
 """
+<<<<<<< HEAD
 evaluate.py — ToneFit ML Project
 ==================================
 Compares all trained models side-by-side and produces a summary table.
@@ -9,13 +10,27 @@ Models compared:
     Model C — FaRL-64 Improved      (results/farl_improved_history.json)   [optional]
 
 Paper baselines (Stacchio et al. 2024) are included for reference.
+=======
+ToneFit ML — Model Evaluation (Step 6)
+========================================
+Evaluates FaRL, DINOv2, and MCF on the held-out test set and compares them
+against each other and against the Deep Armocromia paper baselines.
+>>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
 
 Usage:
     python evaluate.py
 
+<<<<<<< HEAD
 Outputs:
     results/evaluation_summary.csv   — machine-readable comparison table
     results/evaluation_summary.txt   — human-readable comparison table
+=======
+Requires:
+    - models/farl_model.pth    (from train_farl.py)
+    - models/dinov2_model.pth  (from train_dinov2.py)
+    - models/mcf_model.pth     (from train_mcf.py)
+    - RGB-M/test/              (READ ONLY — loaded via ImageFolder)
+>>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
 """
 
 import json
@@ -55,9 +70,15 @@ PAPER_BASELINES = [
     },
 ]
 
+<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # HELPERS
 # ---------------------------------------------------------------------------
+=======
+FARL_PATH     = os.path.join(MODELS_DIR, "farl_model.pth")
+DINOV2_PATH   = os.path.join(MODELS_DIR, "dinov2_model.pth")
+MCF_PATH      = os.path.join(MODELS_DIR, "mcf_model.pth")
+>>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
 
 NA = "N/A"
 
@@ -89,6 +110,7 @@ def _extract_macro_f1_from_report(report_path):
     return float(m.group(1)) if m else None
 
 
+<<<<<<< HEAD
 def _extract_season_f1_from_12class_report(report_path):
     """Parse macro F1 from the derived season section of the 12-class report."""
     if not os.path.exists(report_path):
@@ -101,6 +123,44 @@ def _extract_season_f1_from_12class_report(report_path):
         return None
     m = re.search(r"macro avg\s+[\d.]+\s+[\d.]+\s+([\d.]+)", parts[1])
     return float(m.group(1)) if m else None
+=======
+
+def load_mcf(path):
+    """Load MCF (Mask Contrastive Face) ViT-B/16 model."""
+    try:
+        import timm
+    except ImportError:
+        raise ImportError("timm is required for MCF. Install with: pip install timm>=0.9.0")
+    backbone = timm.create_model("vit_base_patch16_224", pretrained=False, num_classes=0)
+    feature_dim = 768
+    head = build_classifier_head(feature_dim)
+
+    checkpoint = torch.load(path, map_location=DEVICE)
+    if "backbone" in checkpoint and "head" in checkpoint:
+        backbone.load_state_dict(checkpoint["backbone"], strict=False)
+        head.load_state_dict(checkpoint["head"])
+    else:
+        try:
+            backbone.load_state_dict(checkpoint, strict=False)
+        except Exception:
+            pass
+
+    class _Model(nn.Module):
+        def __init__(self, bb, h):
+            super().__init__()
+            self.backbone = bb
+            self.head = h
+        def forward(self, x):
+            with torch.no_grad():
+                feats = self.backbone(x)
+            return self.head(feats)
+
+    model = _Model(backbone, head).to(DEVICE)
+    model.eval()
+    return model
+
+# ── INFERENCE ──────────────────────────────────────────────────────────────────
+>>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
 
 
 # ---------------------------------------------------------------------------
@@ -150,6 +210,7 @@ def load_model_b():
     }
 
 
+<<<<<<< HEAD
 def load_model_c():
     """FaRL-64 Improved (LLRD + unfreeze) — reads farl_improved_history.json."""
     h = _load_json("results/farl_improved_history.json")
@@ -167,6 +228,32 @@ def load_model_c():
         "SubType Acc": subtype_acc,
         "Top-3 Acc":   NA,
     }
+=======
+def save_combined_confusion_matrices(results):
+    n = len(results)
+    fig, axes = plt.subplots(1, n, figsize=(6 * n, 5))
+    if n == 1:
+        axes = [axes]
+    for ax, r in zip(axes, results):
+        cm = confusion_matrix(r["y_true"], r["y_pred"])
+        sns.heatmap(
+            cm, annot=True, fmt="d", cmap="Blues",
+            xticklabels=[s.capitalize() for s in SEASONS],
+            yticklabels=[s.capitalize() for s in SEASONS],
+            linewidths=0.5, ax=ax,
+        )
+        ax.set_title(f"{r['name']}\nAcc: {r['metrics']['Accuracy']:.4f}",
+                     fontsize=12, fontweight="bold")
+        ax.set_xlabel("Predicted", fontsize=10)
+        ax.set_ylabel("Actual", fontsize=10)
+    fig.suptitle("Confusion Matrices — FaRL vs DINOv2 vs MCF (Test Set)",
+                 fontsize=14, fontweight="bold")
+    plt.tight_layout()
+    path = os.path.join(RESULTS_DIR, "confusion_matrices.png")
+    plt.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close()
+    log.info(f"  Saved: {path}")
+>>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
 
 
 def load_hierarchical():
@@ -178,6 +265,7 @@ def load_hierarchical():
     best = max(h, key=lambda r: r.get("val_season_acc", 0))
     macro_f1 = _extract_macro_f1_from_report("results/hierarchical_test_report.txt")
 
+<<<<<<< HEAD
     return {
         "Model":       "Hierarchical FaRL-64 (ours)",
         "Source":      "This study",
@@ -186,6 +274,11 @@ def load_hierarchical():
         "SubType Acc": best.get("val_subtype_acc"),
         "Top-3 Acc":   NA,
     }
+=======
+    # Color: gray for paper baselines, colored for ours
+    n_base  = len(baselines)
+    colors  = ["#AAAAAA"] * n_base + ["#4C72B0", "#DD8452", "#55A868"][:len(df_our)]
+>>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
 
 
 def load_dinov2():
@@ -196,6 +289,7 @@ def load_dinov2():
 
     macro_f1 = _extract_macro_f1_from_report("results/dinov2_report.txt")
 
+<<<<<<< HEAD
     return {
         "Model":       "DINOv2 (ours)",
         "Source":      "This study",
@@ -204,6 +298,14 @@ def load_dinov2():
         "SubType Acc": NA,
         "Top-3 Acc":   NA,
     }
+=======
+def run():
+    log.info("=" * 65)
+    log.info("  ToneFit ML — Model Evaluation")
+    log.info("  FaRL vs DINOv2 vs MCF | Deep Armocromia dataset")
+    log.info("=" * 65)
+    log.info(f"  Device: {DEVICE}")
+>>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
 
 
 # ---------------------------------------------------------------------------
@@ -328,10 +430,33 @@ def main():
                 sign = "+" if diff >= 0 else ""
                 print(f"  {r['Model']}: Season Acc {_fmt(szn)} ({sign}{diff:.4f} vs paper best {paper_szn:.3f})")
 
+<<<<<<< HEAD
             if sub not in (None, NA):
                 diff = float(sub) - paper_sub
                 sign = "+" if diff >= 0 else ""
                 print(f"  {r['Model']}: SubType Acc {_fmt(sub)} ({sign}{diff:.4f} vs paper best {paper_sub:.3f})")
+=======
+    # ── MCF ───────────────────────────────────────────────────────────────────
+    log.info("\n" + "─" * 65)
+    log.info("  MODEL C: MCF (Mask Contrastive Face, ViT-B/16)")
+    log.info("─" * 65)
+    if not os.path.exists(MCF_PATH):
+        log.warning(f"  {MCF_PATH} not found — skipping MCF.")
+    else:
+        log.info(f"  Loading from {MCF_PATH} ...")
+        mcf = load_mcf(MCF_PATH)
+        y_true_m, y_pred_m, y_prob_m = run_inference(mcf, test_loader)
+        metrics_m = compute_metrics("MCF (ours)", y_true_m, y_pred_m, y_prob_m)
+        save_confusion_matrix(y_true_m, y_pred_m, "MCF (ours)", "confusion_mcf.png")
+        model_results.append({
+            "name": "MCF (ours)", "y_true": y_true_m,
+            "y_pred": y_pred_m, "metrics": metrics_m,
+        })
+
+    if not model_results:
+        log.error("  No models evaluated. Train both models first.")
+        return
+>>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
 
             if t3 not in (None, NA):
                 diff = float(t3) - paper_top3
@@ -343,7 +468,54 @@ def main():
     save_csv(rows, "results/evaluation_summary.csv")
     save_txt(rows, "results/evaluation_summary.txt")
 
+<<<<<<< HEAD
     print("[DONE] Evaluation complete.")
+=======
+    csv_path = os.path.join(RESULTS_DIR, "comparison_table.csv")
+    df_full.to_csv(csv_path, index=False)
+    log.info(f"  Saved: {csv_path}")
+
+    # ── Combined confusion matrices ───────────────────────────────────────────
+    if len(model_results) >= 1:
+        log.info("\n[Step 3] Saving confusion matrices...")
+        save_combined_confusion_matrices(model_results)
+
+    # ── Comparison chart vs paper ─────────────────────────────────────────────
+    log.info("\n[Step 4] Saving comparison chart...")
+    save_comparison_chart(df_our, PAPER_BASELINES)
+
+    # ── Final printed table ───────────────────────────────────────────────────
+    log.info("\n" + "=" * 65)
+    log.info("  FINAL RESULTS — Test Set")
+    log.info("=" * 65)
+
+    display_cols = ["Model", "Accuracy", "F1 (weighted)", "Top-2 Accuracy",
+                    "Recall (Autumn)"]
+    available = [c for c in display_cols if c in df_our.columns]
+    log.info("\n" + df_our[available].to_string(index=False))
+
+    log.info("\n  Paper baselines (Stacchio et al., 2024):")
+    for name, vals in PAPER_BASELINES.items():
+        log.info(f"    {name:<22}: acc={vals['accuracy']:.3f}  f1={vals['f1']:.3f}")
+
+    log.info("\n  Autumn recall (expected hardest class):")
+    for r in model_results:
+        log.info(f"    {r['name']:<22}: {r['metrics']['Recall (Autumn)']:.4f}")
+
+    best = max(model_results, key=lambda r: r["metrics"]["Accuracy"])
+    log.info(f"\n  Best model: {best['name']}  "
+             f"(acc={best['metrics']['Accuracy']:.4f})")
+
+    log.info("\n" + "=" * 65)
+    log.info("  Saved files:")
+    log.info(f"    {RESULTS_DIR}/comparison_table.csv")
+    log.info(f"    {RESULTS_DIR}/confusion_farl.png")
+    log.info(f"    {RESULTS_DIR}/confusion_dinov2.png")
+    log.info(f"    {RESULTS_DIR}/confusion_mcf.png")
+    log.info(f"    {RESULTS_DIR}/confusion_matrices.png")
+    log.info(f"    {RESULTS_DIR}/model_comparison.png")
+    log.info("=" * 65)
+>>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
 
 
 if __name__ == "__main__":

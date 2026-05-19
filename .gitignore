@@ -6,6 +6,7 @@
 
 # Training outputs
 results/
+evaluation/
 __pycache__/
 *.pyc
 *.pyo
