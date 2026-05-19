@@ -1,0 +1,2018 @@
+{
+  "spring_warm": {
+    "display_name": "Warm Spring",
+    "season": "spring",
+    "subtype": "warm",
+    "undertone": "Warm",
+    "depth": "Light to Medium",
+    "chroma": "Clear",
+    "overview": {
+      "tagline": "Golden, fresh, and naturally radiant.",
+      "description": "Warm Spring is the warmest and most golden of all the Spring sub-types. Your features are bright and clear with an unmistakably warm, peachy glow. Your skin has golden or peachy undertones, your hair tends toward warm golden brown or strawberry blonde, and your eyes are light and clear with warm flecks. Your best colors are warm, clear, and light \u2014 peach, coral, golden yellow, camel, warm turquoise, and salmon. Avoid cool, icy, or stark colors like navy, stark white, or cool gray, which will wash out your natural warmth and make you look tired.",
+      "keywords": [
+        "warm",
+        "golden",
+        "clear",
+        "fresh",
+        "radiant"
+      ]
+    },
+    "palette": {
+      "best_colors": [
+        {
+          "name": "Peach",
+          "hex": "#FFDAB9"
+        },
+        {
+          "name": "Coral",
+          "hex": "#FF6B4A"
+        },
+        {
+          "name": "Warm Ivory",
+          "hex": "#FFF8DC"
+        },
+        {
+          "name": "Golden Yellow",
+          "hex": "#FFD700"
+        },
+        {
+          "name": "Camel",
+          "hex": "#C19A6B"
+        },
+        {
+          "name": "Warm Turquoise",
+          "hex": "#40CFC0"
+        },
+        {
+          "name": "Salmon",
+          "hex": "#FA8072"
+        },
+        {
+          "name": "Warm Beige",
+          "hex": "#F5DEB3"
+        },
+        {
+          "name": "Moss Green",
+          "hex": "#8A9A5B"
+        },
+        {
+          "name": "Tomato Red",
+          "hex": "#CE2939"
+        },
+        {
+          "name": "Apricot",
+          "hex": "#FBCEB1"
+        },
+        {
+          "name": "Warm Brown",
+          "hex": "#A0522D"
+        }
+      ],
+      "avoid_colors": [
+        {
+          "name": "Icy Blue",
+          "hex": "#D6EAF8"
+        },
+        {
+          "name": "Stark White",
+          "hex": "#FFFFFF"
+        },
+        {
+          "name": "Black",
+          "hex": "#000000"
+        },
+        {
+          "name": "Cool Gray",
+          "hex": "#95A5A6"
+        },
+        {
+          "name": "Navy",
+          "hex": "#1A2657"
+        },
+        {
+          "name": "Cool Purple",
+          "hex": "#6C3483"
+        },
+        {
+          "name": "Fuchsia",
+          "hex": "#C0392B"
+        },
+        {
+          "name": "Charcoal",
+          "hex": "#2C3E50"
+        },
+        {
+          "name": "Cool Pink",
+          "hex": "#E8A0BF"
+        },
+        {
+          "name": "Burgundy",
+          "hex": "#6D1A36"
+        },
+        {
+          "name": "Electric Blue",
+          "hex": "#0000FF"
+        },
+        {
+          "name": "Hot Pink",
+          "hex": "#FF69B4"
+        }
+      ],
+      "best_metals": "Gold, rose gold, warm bronze",
+      "avoid_metals": "Silver, platinum, white gold"
+    },
+    "clothes": {
+      "tops": {
+        "wear": "Peach blouses, coral shirts, warm ivory tops, golden yellow knits, salmon button-downs, warm camel sweaters",
+        "avoid": "Icy blue tops, cool gray shirts, stark white blouses, navy \u2014 these wash out your warm glow"
+      },
+      "bottoms": {
+        "wear": "Camel trousers, warm beige pants, rust-toned skirts, olive chinos, golden tan shorts",
+        "avoid": "Cool gray bottoms, stark black pants, icy pastels \u2014 opt for warm neutrals instead"
+      },
+      "bags_and_shoes": {
+        "wear": "Tan leather bags, warm brown shoes, camel totes, cognac boots, warm nude heels",
+        "avoid": "Black leather bags, silver metallic shoes, cool gray accessories"
+      },
+      "metals_jewelry_gems": {
+        "wear": "Gold jewelry, rose gold rings, warm bronze necklaces, amber stones, citrine, coral, topaz, turquoise",
+        "avoid": "Silver jewelry, platinum, white gold, cool-toned stones like sapphire or amethyst"
+      },
+      "pairing_tips": "Layer warm tones together \u2014 peach top with camel trousers and tan sandals creates a harmonious warm Spring look."
+    },
+    "outfit_images": {
+      "casual": "",
+      "smart_casual": "",
+      "classic": "",
+      "streetwear": "",
+      "retro": "",
+      "formal": ""
+    },
+    "makeup": {
+      "foundation": {
+        "wear": "Warm or golden undertone foundation \u2014 look for W, Y, or N shades with peachy or golden cast",
+        "avoid": "Cool pink or neutral foundations \u2014 they make your skin look ashy and lifeless"
+      },
+      "lips": {
+        "wear": "Warm coral, peach, salmon, warm nude, apricot, warm pink, tomato red",
+        "avoid": "Cool berry, blue-based reds, cool mauve, fuchsia \u2014 too cool for your warm undertone"
+      },
+      "eyes": {
+        "wear": "Warm brown, peach, copper, golden bronze, camel, warm taupe, coral \u2014 enhances your warm eye color",
+        "avoid": "Cool gray, silver, icy pink, cool purple \u2014 creates a clash with your warm coloring"
+      },
+      "blush": {
+        "wear": "Warm peach, apricot, coral, warm salmon \u2014 adds a natural sun-kissed flush",
+        "avoid": "Cool pink, mauve, berry blush \u2014 makes your skin look cool and dull"
+      }
+    }
+  },
+  "spring_light": {
+    "display_name": "Light Spring",
+    "season": "spring",
+    "subtype": "light",
+    "undertone": "Warm-Neutral",
+    "depth": "Light",
+    "chroma": "Muted-Clear",
+    "overview": {
+      "tagline": "Delicate, airy, and softly luminous.",
+      "description": "Light Spring is the lightest and most delicate of the Spring sub-types, bridging Spring and Summer. Your coloring is soft, warm, and gentle \u2014 with light golden or peachy undertones, fair to light skin, and light warm-toned eyes and hair. Your best colors are light, warm, and soft \u2014 light peach, blush pink, vanilla, warm white, soft aqua, and pale camel. Heavy, dark, or stark colors like black, deep navy, or charcoal overwhelm your delicate coloring. Keep everything light, airy, and gently warm for a fresh and naturally beautiful look.",
+      "keywords": [
+        "light",
+        "delicate",
+        "airy",
+        "soft",
+        "luminous"
+      ]
+    },
+    "palette": {
+      "best_colors": [
+        {
+          "name": "Light Peach",
+          "hex": "#FFE5CC"
+        },
+        {
+          "name": "Soft Coral",
+          "hex": "#F4A382"
+        },
+        {
+          "name": "Warm White",
+          "hex": "#FFFAF0"
+        },
+        {
+          "name": "Light Gold",
+          "hex": "#FFE066"
+        },
+        {
+          "name": "Pale Camel",
+          "hex": "#D4B896"
+        },
+        {
+          "name": "Soft Aqua",
+          "hex": "#7FFFD4"
+        },
+        {
+          "name": "Blush Pink",
+          "hex": "#FFB6C1"
+        },
+        {
+          "name": "Vanilla",
+          "hex": "#F3E5AB"
+        },
+        {
+          "name": "Sage Green",
+          "hex": "#BCB88A"
+        },
+        {
+          "name": "Warm Lavender",
+          "hex": "#E8D5E8"
+        },
+        {
+          "name": "Light Apricot",
+          "hex": "#FDDCB5"
+        },
+        {
+          "name": "Soft Teal",
+          "hex": "#96C8C8"
+        }
+      ],
+      "avoid_colors": [
+        {
+          "name": "Black",
+          "hex": "#000000"
+        },
+        {
+          "name": "Deep Navy",
+          "hex": "#0D1B2A"
+        },
+        {
+          "name": "Stark White",
+          "hex": "#FFFFFF"
+        },
+        {
+          "name": "Charcoal",
+          "hex": "#2C3E50"
+        },
+        {
+          "name": "Dark Burgundy",
+          "hex": "#4A0E0E"
+        },
+        {
+          "name": "Cool Gray",
+          "hex": "#95A5A6"
+        },
+        {
+          "name": "Electric Blue",
+          "hex": "#0000FF"
+        },
+        {
+          "name": "Hot Pink",
+          "hex": "#FF69B4"
+        },
+        {
+          "name": "Olive",
+          "hex": "#808000"
+        },
+        {
+          "name": "Dark Brown",
+          "hex": "#3D1C02"
+        },
+        {
+          "name": "Fuchsia",
+          "hex": "#FF00FF"
+        },
+        {
+          "name": "Dark Purple",
+          "hex": "#4B0082"
+        }
+      ],
+      "best_metals": "Light gold, rose gold",
+      "avoid_metals": "Silver, dark metals, oxidized metals"
+    },
+    "clothes": {
+      "tops": {
+        "wear": "Light peach blouses, soft coral shirts, vanilla knits, warm white tees, blush pink tops, light apricot sweaters",
+        "avoid": "Dark navy, stark black, charcoal \u2014 too heavy for your delicate coloring"
+      },
+      "bottoms": {
+        "wear": "Pale camel trousers, warm white pants, light beige skirts, soft sand shorts, ivory linen bottoms",
+        "avoid": "Dark brown bottoms, black pants, heavy dark colors that overpower your lightness"
+      },
+      "bags_and_shoes": {
+        "wear": "Light tan bags, nude shoes, soft beige totes, warm white sneakers, light gold accessories",
+        "avoid": "Black bags, dark brown shoes, heavy dark accessories"
+      },
+      "metals_jewelry_gems": {
+        "wear": "Light gold, rose gold, delicate gold chains, pearl, rose quartz, peach moonstone, soft coral gems",
+        "avoid": "Heavy silver, dark oxidized metals, bold chunky jewelry \u2014 keep it delicate"
+      },
+      "pairing_tips": "Keep everything light and airy \u2014 mix soft peach, vanilla, and light camel for a fresh, luminous Light Spring look."
+    },
+    "outfit_images": {
+      "casual": "",
+      "smart_casual": "",
+      "classic": "",
+      "streetwear": "",
+      "retro": "",
+      "formal": ""
+    },
+    "makeup": {
+      "foundation": {
+        "wear": "Light warm or neutral foundation \u2014 very light coverage with a warm peachy or golden cast",
+        "avoid": "Heavy coverage or cool pink foundations \u2014 overwhelm your delicate coloring"
+      },
+      "lips": {
+        "wear": "Soft peach, light coral, blush pink, warm nude, light apricot, sheer warm rose",
+        "avoid": "Dark or heavy lip colors, cool berry, deep burgundy \u2014 too heavy and overpowering"
+      },
+      "eyes": {
+        "wear": "Soft peach, vanilla, light warm brown, rose gold, champagne, light apricot shimmer",
+        "avoid": "Heavy dark shadows, cool gray, stark black liner \u2014 too harsh for your delicate features"
+      },
+      "blush": {
+        "wear": "Very light peach, soft coral, delicate warm pink \u2014 keep it barely-there and natural",
+        "avoid": "Deep or vivid blush, cool pink \u2014 overwhelming for your soft delicate coloring"
+      }
+    }
+  },
+  "spring_bright": {
+    "display_name": "Bright Spring",
+    "season": "spring",
+    "subtype": "bright",
+    "undertone": "Warm-Neutral",
+    "depth": "Light to Medium",
+    "chroma": "Bright-Clear",
+    "overview": {
+      "tagline": "Vivid, energetic, and strikingly clear.",
+      "description": "Bright Spring is the most vivid and clear of the Spring sub-types, sharing the high clarity of Bright Winter. Your features are bright and high-contrast with warm undertones \u2014 clear eyes with vivid color, warm skin with a healthy glow, and hair that tends toward warm golden or brown tones. Your best colors are bright, warm, and clear \u2014 bright coral, warm yellow, poppy red, bright turquoise, and vivid orange. Muted, dusty, or grayed-out colors dull your natural vibrancy. You need clear, bright colors with warm undertones to match your energetic and striking appearance.",
+      "keywords": [
+        "bright",
+        "vivid",
+        "clear",
+        "warm",
+        "energetic"
+      ]
+    },
+    "palette": {
+      "best_colors": [
+        {
+          "name": "Bright Coral",
+          "hex": "#FF4040"
+        },
+        {
+          "name": "Warm Yellow",
+          "hex": "#FFD300"
+        },
+        {
+          "name": "Bright Aqua",
+          "hex": "#00FFCC"
+        },
+        {
+          "name": "Ivory",
+          "hex": "#FFFFF0"
+        },
+        {
+          "name": "Bright Orange",
+          "hex": "#FF6600"
+        },
+        {
+          "name": "Clear Green",
+          "hex": "#00CC66"
+        },
+        {
+          "name": "Bright Pink",
+          "hex": "#FF69B4"
+        },
+        {
+          "name": "Warm Red",
+          "hex": "#FF2400"
+        },
+        {
+          "name": "Golden Tan",
+          "hex": "#D2A679"
+        },
+        {
+          "name": "Bright Turquoise",
+          "hex": "#00CED1"
+        },
+        {
+          "name": "Poppy Red",
+          "hex": "#FF4136"
+        },
+        {
+          "name": "Warm Lime",
+          "hex": "#BFFF00"
+        }
+      ],
+      "avoid_colors": [
+        {
+          "name": "Muted Olive",
+          "hex": "#6B6B47"
+        },
+        {
+          "name": "Dusty Rose",
+          "hex": "#DCB4B4"
+        },
+        {
+          "name": "Grayed Blue",
+          "hex": "#7D8FA0"
+        },
+        {
+          "name": "Charcoal",
+          "hex": "#2C3E50"
+        },
+        {
+          "name": "Dark Brown",
+          "hex": "#3D1C02"
+        },
+        {
+          "name": "Slate",
+          "hex": "#708090"
+        },
+        {
+          "name": "Muted Mauve",
+          "hex": "#B0828C"
+        },
+        {
+          "name": "Khaki",
+          "hex": "#C3B091"
+        },
+        {
+          "name": "Black",
+          "hex": "#000000"
+        },
+        {
+          "name": "Cool Gray",
+          "hex": "#95A5A6"
+        },
+        {
+          "name": "Navy",
+          "hex": "#1A2657"
+        },
+        {
+          "name": "Burgundy",
+          "hex": "#6D1A36"
+        }
+      ],
+      "best_metals": "Gold, bright gold, warm bronze",
+      "avoid_metals": "Oxidized silver, antique metals"
+    },
+    "clothes": {
+      "tops": {
+        "wear": "Bright coral tops, warm yellow shirts, poppy red blouses, bright turquoise tees, vivid orange knits, clear green shirts",
+        "avoid": "Muted dusty colors, grayed tones, khaki \u2014 your brightness needs clear vivid colors"
+      },
+      "bottoms": {
+        "wear": "Ivory trousers, bright white pants, warm tan shorts, clear teal skirts, golden tan chinos",
+        "avoid": "Muted olive, dusty gray bottoms, dull colors that dull your natural vibrancy"
+      },
+      "bags_and_shoes": {
+        "wear": "Clear bright colored bags, warm tan shoes, bright white sneakers, coral accessories, golden accents",
+        "avoid": "Muted dusty bags, gray shoes, dull accessories"
+      },
+      "metals_jewelry_gems": {
+        "wear": "Bright gold, warm yellow gold, citrine, clear topaz, coral gems, bright turquoise stones",
+        "avoid": "Oxidized metals, antique finishes, dark muted stones \u2014 keep metals bright and clear"
+      },
+      "pairing_tips": "Do not be afraid of color combinations \u2014 bright coral top with ivory bottoms and gold accessories is a perfect Bright Spring look."
+    },
+    "outfit_images": {
+      "casual": "",
+      "smart_casual": "",
+      "classic": "",
+      "streetwear": "",
+      "retro": "",
+      "formal": ""
+    },
+    "makeup": {
+      "foundation": {
+        "wear": "Warm or neutral foundation with a natural finish \u2014 healthy glow is key for Bright Spring",
+        "avoid": "Matte cool foundations \u2014 dulls your natural vibrancy and warmth"
+      },
+      "lips": {
+        "wear": "Bright coral, warm poppy red, vivid warm pink, bright orange-red, clear warm rose",
+        "avoid": "Muted nudes, dusty rose, cool mauve \u2014 too muted for your bright vivid coloring"
+      },
+      "eyes": {
+        "wear": "Bright coral, warm yellow-gold, clear turquoise, vivid warm green, bright copper, golden bronze",
+        "avoid": "Muted dusty shadows, cool gray, dark smoky colors \u2014 dulls your bright clear features"
+      },
+      "blush": {
+        "wear": "Bright coral, vivid warm peach, clear warm pink \u2014 match the vibrancy of your natural coloring",
+        "avoid": "Muted or dusty blush, cool tones \u2014 does not match your bright energetic appearance"
+      }
+    }
+  },
+  "summer_cool": {
+    "display_name": "Cool Summer",
+    "season": "summer",
+    "subtype": "cool",
+    "undertone": "Cool",
+    "depth": "Light to Medium",
+    "chroma": "Muted",
+    "overview": {
+      "tagline": "Elegant, refined, and coolly sophisticated.",
+      "description": "Cool Summer is the coolest and most classic of the Summer sub-types. Your features have a distinctly cool, blue-pink undertone \u2014 with rosy or cool-toned skin, cool ash or mousy brown hair, and soft cool-toned eyes in blue, gray, or cool green. Your best colors are cool, soft, and muted \u2014 dusty rose, powder blue, lavender, mauve, steel blue, and soft gray. Warm colors like orange, mustard, camel, and rust clash with your cool undertone and make you look off. Your natural sophistication shines brightest in cool, elegant, softly muted tones.",
+      "keywords": [
+        "cool",
+        "muted",
+        "elegant",
+        "refined",
+        "sophisticated"
+      ]
+    },
+    "palette": {
+      "best_colors": [
+        {
+          "name": "Dusty Rose",
+          "hex": "#DCB4B4"
+        },
+        {
+          "name": "Powder Blue",
+          "hex": "#B0C4DE"
+        },
+        {
+          "name": "Lavender",
+          "hex": "#E6E6FA"
+        },
+        {
+          "name": "Soft White",
+          "hex": "#F8F8FF"
+        },
+        {
+          "name": "Mauve",
+          "hex": "#E0B0C8"
+        },
+        {
+          "name": "Steel Blue",
+          "hex": "#4682B4"
+        },
+        {
+          "name": "Sage Green",
+          "hex": "#B2C2B0"
+        },
+        {
+          "name": "Soft Gray",
+          "hex": "#D3D3D3"
+        },
+        {
+          "name": "Raspberry",
+          "hex": "#C0446E"
+        },
+        {
+          "name": "Cool Teal",
+          "hex": "#5F9EA0"
+        },
+        {
+          "name": "Periwinkle",
+          "hex": "#CCCCFF"
+        },
+        {
+          "name": "Dusty Purple",
+          "hex": "#9B7EBF"
+        }
+      ],
+      "avoid_colors": [
+        {
+          "name": "Warm Orange",
+          "hex": "#FF8C00"
+        },
+        {
+          "name": "Mustard",
+          "hex": "#FFDB58"
+        },
+        {
+          "name": "Camel",
+          "hex": "#C19A6B"
+        },
+        {
+          "name": "Rust",
+          "hex": "#B7410E"
+        },
+        {
+          "name": "Olive Green",
+          "hex": "#808000"
+        },
+        {
+          "name": "Warm Brown",
+          "hex": "#784212"
+        },
+        {
+          "name": "Tomato Red",
+          "hex": "#CE2939"
+        },
+        {
+          "name": "Bright Yellow",
+          "hex": "#FFD700"
+        },
+        {
+          "name": "Warm Coral",
+          "hex": "#FF6B4A"
+        },
+        {
+          "name": "Gold",
+          "hex": "#D4AC0D"
+        },
+        {
+          "name": "Terracotta",
+          "hex": "#C1440E"
+        },
+        {
+          "name": "Peach",
+          "hex": "#FFDAB9"
+        }
+      ],
+      "best_metals": "Silver, white gold, platinum",
+      "avoid_metals": "Yellow gold, bronze, copper"
+    },
+    "clothes": {
+      "tops": {
+        "wear": "Dusty rose blouses, powder blue shirts, lavender tops, soft gray knits, mauve sweaters, steel blue button-downs",
+        "avoid": "Warm orange tops, mustard yellow shirts, camel sweaters, rust \u2014 these clash with your cool undertone"
+      },
+      "bottoms": {
+        "wear": "Soft gray trousers, cool blue pants, dusty mauve skirts, periwinkle shorts, steel blue chinos",
+        "avoid": "Warm brown bottoms, olive pants, camel skirts, rust-toned bottoms"
+      },
+      "bags_and_shoes": {
+        "wear": "Soft gray leather bags, dusty rose accessories, cool taupe shoes, silver metallic bags, powder blue accents",
+        "avoid": "Warm tan bags, cognac shoes, golden accessories, camel leather"
+      },
+      "metals_jewelry_gems": {
+        "wear": "Silver jewelry, white gold, platinum, pearls, rose quartz, amethyst, soft blue sapphire, moonstone",
+        "avoid": "Yellow gold, bronze, copper, warm-toned stones like citrine or amber"
+      },
+      "pairing_tips": "Mix cool muted tones \u2014 dusty rose top with soft gray trousers and silver jewelry creates an elegant Cool Summer look."
+    },
+    "outfit_images": {
+      "casual": "",
+      "smart_casual": "",
+      "classic": "",
+      "streetwear": "",
+      "retro": "",
+      "formal": ""
+    },
+    "makeup": {
+      "foundation": {
+        "wear": "Cool or neutral-pink undertone foundation \u2014 look for C or N shades with a rosy or pink cast",
+        "avoid": "Warm, peach, or golden foundations \u2014 makes your skin look orange and unnatural"
+      },
+      "lips": {
+        "wear": "Dusty rose, cool mauve, soft raspberry, cool pink, muted berry, blue-based rose",
+        "avoid": "Warm orange-red, coral, warm peach, tomato red \u2014 clashes with your cool undertone"
+      },
+      "eyes": {
+        "wear": "Soft mauve, cool taupe, dusty pink, soft lavender, cool gray, muted plum, rose",
+        "avoid": "Warm bronze, gold, copper eyeshadow \u2014 adds unwanted warmth to your cool features"
+      },
+      "blush": {
+        "wear": "Cool rose, soft mauve, dusty pink, soft raspberry \u2014 enhances your natural cool flush",
+        "avoid": "Warm peach, coral, orange-toned blush \u2014 clashes with your cool skin undertone"
+      }
+    }
+  },
+  "summer_light": {
+    "display_name": "Light Summer",
+    "season": "summer",
+    "subtype": "light",
+    "undertone": "Cool-Neutral",
+    "depth": "Light",
+    "chroma": "Muted",
+    "overview": {
+      "tagline": "Soft, ethereal, and quietly beautiful.",
+      "description": "Light Summer is the lightest of the Summer sub-types, sharing delicacy with Light Spring but with a distinctly cool undertone. Your features are soft and cool \u2014 with fair, pinkish skin, light cool ash or mousy blonde hair, and soft cool-toned eyes. Your best colors are light, cool, and soft \u2014 soft lavender, baby blue, pale pink, cool white, light gray, and icy periwinkle. Dark, heavy, or warm colors overwhelm your gentle coloring. Keep everything light, cool, and understated to let your naturally soft and ethereal beauty come through.",
+      "keywords": [
+        "light",
+        "soft",
+        "cool",
+        "ethereal",
+        "gentle"
+      ]
+    },
+    "palette": {
+      "best_colors": [
+        {
+          "name": "Soft Lavender",
+          "hex": "#E8D5F0"
+        },
+        {
+          "name": "Baby Blue",
+          "hex": "#D6EAF8"
+        },
+        {
+          "name": "Pale Pink",
+          "hex": "#FFE4E1"
+        },
+        {
+          "name": "Light Gray",
+          "hex": "#E8E8E8"
+        },
+        {
+          "name": "Soft Mint",
+          "hex": "#C8E6C9"
+        },
+        {
+          "name": "Cool White",
+          "hex": "#F5F5F5"
+        },
+        {
+          "name": "Pale Mauve",
+          "hex": "#E8C8D8"
+        },
+        {
+          "name": "Icy Blue",
+          "hex": "#E3F2FD"
+        },
+        {
+          "name": "Soft Periwinkle",
+          "hex": "#D8D8F8"
+        },
+        {
+          "name": "Pale Rose",
+          "hex": "#F8E0E0"
+        },
+        {
+          "name": "Soft Teal",
+          "hex": "#B2D8D8"
+        },
+        {
+          "name": "Light Slate",
+          "hex": "#C8D0D8"
+        }
+      ],
+      "avoid_colors": [
+        {
+          "name": "Black",
+          "hex": "#000000"
+        },
+        {
+          "name": "Bright Orange",
+          "hex": "#FF6600"
+        },
+        {
+          "name": "Mustard",
+          "hex": "#FFDB58"
+        },
+        {
+          "name": "Rust",
+          "hex": "#B7410E"
+        },
+        {
+          "name": "Dark Olive",
+          "hex": "#556B2F"
+        },
+        {
+          "name": "Warm Brown",
+          "hex": "#784212"
+        },
+        {
+          "name": "Bright Red",
+          "hex": "#FF0000"
+        },
+        {
+          "name": "Neon Yellow",
+          "hex": "#FFFF00"
+        },
+        {
+          "name": "Camel",
+          "hex": "#C19A6B"
+        },
+        {
+          "name": "Hot Pink",
+          "hex": "#FF69B4"
+        },
+        {
+          "name": "Electric Blue",
+          "hex": "#0000FF"
+        },
+        {
+          "name": "Dark Burgundy",
+          "hex": "#4A0E0E"
+        }
+      ],
+      "best_metals": "Silver, delicate white gold",
+      "avoid_metals": "Yellow gold, heavy bronze, copper"
+    },
+    "clothes": {
+      "tops": {
+        "wear": "Soft lavender blouses, baby blue shirts, pale pink tops, cool white tees, light gray knits, soft periwinkle sweaters",
+        "avoid": "Black tops, bright orange, mustard \u2014 too harsh for your delicate cool coloring"
+      },
+      "bottoms": {
+        "wear": "Light gray trousers, cool white pants, pale blue skirts, soft lavender shorts, icy pink bottoms",
+        "avoid": "Dark olive, warm brown pants, rust-toned bottoms, heavy dark colors"
+      },
+      "bags_and_shoes": {
+        "wear": "Soft gray bags, pale pink accessories, cool white shoes, light silver accents, powder blue totes",
+        "avoid": "Warm tan bags, cognac shoes, golden accessories, dark heavy bags"
+      },
+      "metals_jewelry_gems": {
+        "wear": "Delicate silver, light white gold, pearls, light amethyst, rose quartz, soft blue topaz, moonstone",
+        "avoid": "Heavy yellow gold, bright bronze, copper \u2014 too warm and too heavy"
+      },
+      "pairing_tips": "Keep everything soft and light \u2014 pale blue top with light gray trousers and delicate silver jewelry for an effortless Light Summer look."
+    },
+    "outfit_images": {
+      "casual": "",
+      "smart_casual": "",
+      "classic": "",
+      "streetwear": "",
+      "retro": "",
+      "formal": ""
+    },
+    "makeup": {
+      "foundation": {
+        "wear": "Light cool or neutral foundation \u2014 very sheer coverage with cool pink or neutral cast",
+        "avoid": "Warm peachy foundations, heavy coverage \u2014 overwhelms your light delicate cool coloring"
+      },
+      "lips": {
+        "wear": "Pale cool pink, soft rose, sheer mauve, light berry, icy pink, cool nude",
+        "avoid": "Warm nudes, coral, orange-based reds, dark heavy colors \u2014 too warm and too heavy"
+      },
+      "eyes": {
+        "wear": "Soft lavender, pale pink, light cool gray, icy blue, soft rose, barely-there shimmer",
+        "avoid": "Warm bronze, gold, copper, dark heavy shadows \u2014 too warm and too heavy for your lightness"
+      },
+      "blush": {
+        "wear": "Very pale cool pink, soft icy rose, light mauve \u2014 barely there and naturally cool",
+        "avoid": "Warm peach, vivid coral, dark berry \u2014 overpowers your soft delicate coloring"
+      }
+    }
+  },
+  "summer_soft": {
+    "display_name": "Soft Summer",
+    "season": "summer",
+    "subtype": "soft",
+    "undertone": "Cool-Neutral",
+    "depth": "Light to Medium",
+    "chroma": "Muted-Soft",
+    "overview": {
+      "tagline": "Muted, blended, and effortlessly graceful.",
+      "description": "Soft Summer is the most muted and blended of the Summer sub-types, bridging Summer and Soft Autumn. Your features are soft, cool, and low-contrast \u2014 with muted cool-toned skin, soft ash or mousy brown hair, and gentle cool-toned eyes that blend softly with your overall coloring. Your best colors are soft, muted, and cool \u2014 dusty mauve, grayed blue, soft sage, stone gray, and faded denim. Bright, stark, or vivid colors create too much contrast and overwhelm your naturally gentle appearance. Your elegance lies in your soft, harmonious blending of tones.",
+      "keywords": [
+        "muted",
+        "soft",
+        "blended",
+        "cool",
+        "graceful"
+      ]
+    },
+    "palette": {
+      "best_colors": [
+        {
+          "name": "Dusty Mauve",
+          "hex": "#C8A0A8"
+        },
+        {
+          "name": "Grayed Blue",
+          "hex": "#8AAABB"
+        },
+        {
+          "name": "Soft Sage",
+          "hex": "#A8B8A0"
+        },
+        {
+          "name": "Muted Rose",
+          "hex": "#C89898"
+        },
+        {
+          "name": "Stone Gray",
+          "hex": "#B8B0A8"
+        },
+        {
+          "name": "Dusty Lavender",
+          "hex": "#B8A8C8"
+        },
+        {
+          "name": "Soft Teal",
+          "hex": "#88A8A8"
+        },
+        {
+          "name": "Faded Denim",
+          "hex": "#8899AA"
+        },
+        {
+          "name": "Muted Plum",
+          "hex": "#9870A0"
+        },
+        {
+          "name": "Soft Cocoa",
+          "hex": "#A08878"
+        },
+        {
+          "name": "Dusty Pink",
+          "hex": "#C8A0B0"
+        },
+        {
+          "name": "Grayed Green",
+          "hex": "#90A890"
+        }
+      ],
+      "avoid_colors": [
+        {
+          "name": "Bright Orange",
+          "hex": "#FF6600"
+        },
+        {
+          "name": "Pure White",
+          "hex": "#FFFFFF"
+        },
+        {
+          "name": "Black",
+          "hex": "#000000"
+        },
+        {
+          "name": "Hot Pink",
+          "hex": "#FF69B4"
+        },
+        {
+          "name": "Bright Yellow",
+          "hex": "#FFD700"
+        },
+        {
+          "name": "Electric Blue",
+          "hex": "#0000FF"
+        },
+        {
+          "name": "Neon Green",
+          "hex": "#00FF00"
+        },
+        {
+          "name": "Rust",
+          "hex": "#B7410E"
+        },
+        {
+          "name": "Bright Red",
+          "hex": "#FF0000"
+        },
+        {
+          "name": "Gold",
+          "hex": "#D4AC0D"
+        },
+        {
+          "name": "Camel",
+          "hex": "#C19A6B"
+        },
+        {
+          "name": "Bright Coral",
+          "hex": "#FF4040"
+        }
+      ],
+      "best_metals": "Soft silver, pewter, rose gold",
+      "avoid_metals": "Bright gold, copper, oxidized metals"
+    },
+    "clothes": {
+      "tops": {
+        "wear": "Dusty mauve blouses, grayed blue shirts, soft sage tops, muted rose knits, stone gray sweaters, dusty lavender tees",
+        "avoid": "Bright neon tops, pure white shirts, stark black blouses, vivid colors \u2014 your palette is soft and muted"
+      },
+      "bottoms": {
+        "wear": "Stone gray trousers, dusty blue pants, muted sage skirts, soft cocoa shorts, faded denim",
+        "avoid": "Bright white bottoms, neon colors, stark black pants, overly vivid bottoms"
+      },
+      "bags_and_shoes": {
+        "wear": "Stone gray bags, dusty rose shoes, soft taupe accessories, pewter accents, muted blue totes",
+        "avoid": "Bright gold accessories, vivid colored bags, stark white or black shoes"
+      },
+      "metals_jewelry_gems": {
+        "wear": "Soft silver, pewter, brushed rose gold, soft amethyst, dusty pink tourmaline, grayed moonstone",
+        "avoid": "Bright shiny gold, copper, highly polished metals \u2014 keep finishes soft and muted"
+      },
+      "pairing_tips": "Layer muted tones together \u2014 dusty mauve top with stone gray trousers and pewter accessories for a sophisticated Soft Summer look."
+    },
+    "outfit_images": {
+      "casual": "",
+      "smart_casual": "",
+      "classic": "",
+      "streetwear": "",
+      "retro": "",
+      "formal": ""
+    },
+    "makeup": {
+      "foundation": {
+        "wear": "Cool or neutral-cool foundation with a soft matte or natural finish",
+        "avoid": "Warm golden foundations, heavy full-coverage \u2014 clashes with your soft cool coloring"
+      },
+      "lips": {
+        "wear": "Muted mauve, dusty rose, soft berry, grayed pink, muted cool nude, dusty plum",
+        "avoid": "Bright vivid lips, warm coral, orange-red \u2014 too stark and vivid for your soft appearance"
+      },
+      "eyes": {
+        "wear": "Dusty mauve, grayed blue, soft sage, muted plum, stone gray, dusty rose shimmer",
+        "avoid": "Vivid bright shadows, warm bronze, gold, copper \u2014 too warm and too vivid"
+      },
+      "blush": {
+        "wear": "Dusty cool pink, muted mauve, soft grayed rose \u2014 muted and soft to match your coloring",
+        "avoid": "Vivid coral, bright warm peach, stark colors \u2014 too strong for your soft blended appearance"
+      }
+    }
+  },
+  "autumn_warm": {
+    "display_name": "Warm Autumn",
+    "season": "autumn",
+    "subtype": "warm",
+    "undertone": "Warm",
+    "depth": "Medium to Deep",
+    "chroma": "Muted",
+    "overview": {
+      "tagline": "Earthy, golden, and richly warm.",
+      "description": "Warm Autumn is the warmest and most golden of all the Autumn sub-types. Your features radiate warmth \u2014 with golden, peachy, or olive undertones in your skin, warm auburn, copper, or golden brown hair, and warm-toned hazel, brown, or golden eyes. Your best colors are warm, earthy, and muted \u2014 rust, olive green, camel, burnt orange, chocolate brown, and mustard. Cool, icy, or stark colors like navy, cool pink, and stark white clash with your warm earthy glow. You look most stunning surrounded by the rich, golden palette of an autumn forest.",
+      "keywords": [
+        "warm",
+        "earthy",
+        "golden",
+        "rich",
+        "muted"
+      ]
+    },
+    "palette": {
+      "best_colors": [
+        {
+          "name": "Rust",
+          "hex": "#B7410E"
+        },
+        {
+          "name": "Olive Green",
+          "hex": "#708238"
+        },
+        {
+          "name": "Camel",
+          "hex": "#C19A6B"
+        },
+        {
+          "name": "Burnt Orange",
+          "hex": "#CC5500"
+        },
+        {
+          "name": "Chocolate Brown",
+          "hex": "#7B3F00"
+        },
+        {
+          "name": "Mustard",
+          "hex": "#E1AD01"
+        },
+        {
+          "name": "Warm Terracotta",
+          "hex": "#C1440E"
+        },
+        {
+          "name": "Golden Yellow",
+          "hex": "#DAA520"
+        },
+        {
+          "name": "Moss Green",
+          "hex": "#8A9A5B"
+        },
+        {
+          "name": "Warm Teal",
+          "hex": "#4A8B8B"
+        },
+        {
+          "name": "Copper",
+          "hex": "#B87333"
+        },
+        {
+          "name": "Deep Peach",
+          "hex": "#FFAD7D"
+        }
+      ],
+      "avoid_colors": [
+        {
+          "name": "Icy Blue",
+          "hex": "#D6EAF8"
+        },
+        {
+          "name": "Cool Pink",
+          "hex": "#E8A0BF"
+        },
+        {
+          "name": "Stark White",
+          "hex": "#FFFFFF"
+        },
+        {
+          "name": "Electric Neon",
+          "hex": "#00FF00"
+        },
+        {
+          "name": "Cool Gray",
+          "hex": "#95A5A6"
+        },
+        {
+          "name": "Fuchsia",
+          "hex": "#FF00FF"
+        },
+        {
+          "name": "Hot Pink",
+          "hex": "#FF69B4"
+        },
+        {
+          "name": "Icy Lavender",
+          "hex": "#E6E6FA"
+        },
+        {
+          "name": "Navy Blue",
+          "hex": "#1A2657"
+        },
+        {
+          "name": "Black",
+          "hex": "#000000"
+        },
+        {
+          "name": "Cool Purple",
+          "hex": "#6C3483"
+        },
+        {
+          "name": "Cobalt Blue",
+          "hex": "#0047AB"
+        }
+      ],
+      "best_metals": "Gold, bronze, antique gold, copper",
+      "avoid_metals": "Silver, platinum, white gold"
+    },
+    "clothes": {
+      "tops": {
+        "wear": "Rust blouses, olive green shirts, burnt orange knits, mustard sweaters, camel tops, warm terracotta tees",
+        "avoid": "Icy blue tops, cool pink shirts, stark white blouses, neon colors \u2014 these clash with your earthy warmth"
+      },
+      "bottoms": {
+        "wear": "Chocolate brown trousers, olive chinos, camel skirts, warm rust pants, dark golden tan shorts",
+        "avoid": "Cool gray bottoms, icy pastel pants, navy skirts, cool-toned bottoms"
+      },
+      "bags_and_shoes": {
+        "wear": "Camel leather bags, cognac boots, warm brown shoes, tan totes, rust-toned accessories",
+        "avoid": "Black leather bags, silver metallic shoes, cool gray accessories, navy bags"
+      },
+      "metals_jewelry_gems": {
+        "wear": "Gold jewelry, bronze, antique gold, copper, amber stones, tortoiseshell, wooden accents, citrine, tiger eye",
+        "avoid": "Silver jewelry, platinum, white gold, cool blue gems \u2014 anything that adds coolness"
+      },
+      "pairing_tips": "Embrace the earthy palette \u2014 rust top with olive trousers and cognac boots is a quintessential Warm Autumn look."
+    },
+    "outfit_images": {
+      "casual": "",
+      "smart_casual": "",
+      "classic": "",
+      "streetwear": "",
+      "retro": "",
+      "formal": ""
+    },
+    "makeup": {
+      "foundation": {
+        "wear": "Warm or golden undertone foundation \u2014 look for W, Y, or N shades with a golden or olive cast",
+        "avoid": "Cool pink foundations, ashy or gray-toned bases \u2014 makes your warm skin look dull and lifeless"
+      },
+      "lips": {
+        "wear": "Terracotta, brick red, warm brown, burnt orange-red, warm coral, deep peach, copper rose",
+        "avoid": "Cool berry, blue-based red, cool pink, fuchsia \u2014 too cool for your earthy warm undertone"
+      },
+      "eyes": {
+        "wear": "Warm brown, rust, copper, bronze, olive green, caramel, golden, warm terracotta",
+        "avoid": "Cool gray, silver, icy pink, cool purple \u2014 creates an unnatural clash with your earthy warmth"
+      },
+      "blush": {
+        "wear": "Warm peach, terracotta, copper, warm bronze blush \u2014 earthy and warm like your coloring",
+        "avoid": "Cool pink, mauve, berry \u2014 these add coolness that fights your natural warm undertone"
+      }
+    }
+  },
+  "autumn_soft": {
+    "display_name": "Soft Autumn",
+    "season": "autumn",
+    "subtype": "soft",
+    "undertone": "Warm-Neutral",
+    "depth": "Light to Medium",
+    "chroma": "Muted-Soft",
+    "overview": {
+      "tagline": "Gentle, muted, and warmly understated.",
+      "description": "Soft Autumn is the most muted and gentle of the Autumn sub-types, bridging Autumn and Soft Summer. Your features are softly warm and low-contrast \u2014 with light to medium warm-toned skin, soft warm brown or golden hair, and gently warm eyes that blend harmoniously with your overall coloring. Your best colors are warm, muted, and soft \u2014 dusty rust, muted olive, warm taupe, soft terracotta, and warm gray. Stark, vivid, or cool colors create too much contrast and overwhelm your naturally gentle warmth. Your beauty is in your soft, understated warmth.",
+      "keywords": [
+        "soft",
+        "muted",
+        "warm",
+        "gentle",
+        "understated"
+      ]
+    },
+    "palette": {
+      "best_colors": [
+        {
+          "name": "Soft Rust",
+          "hex": "#C87050"
+        },
+        {
+          "name": "Muted Olive",
+          "hex": "#8A8A5A"
+        },
+        {
+          "name": "Warm Taupe",
+          "hex": "#C8A888"
+        },
+        {
+          "name": "Dusty Orange",
+          "hex": "#C87840"
+        },
+        {
+          "name": "Warm Gray",
+          "hex": "#A89880"
+        },
+        {
+          "name": "Muted Gold",
+          "hex": "#C8A040"
+        },
+        {
+          "name": "Soft Terracotta",
+          "hex": "#C87060"
+        },
+        {
+          "name": "Warm Sand",
+          "hex": "#C8B888"
+        },
+        {
+          "name": "Muted Sage",
+          "hex": "#90A070"
+        },
+        {
+          "name": "Dusty Teal",
+          "hex": "#607870"
+        },
+        {
+          "name": "Soft Camel",
+          "hex": "#C0A878"
+        },
+        {
+          "name": "Muted Mauve",
+          "hex": "#A87878"
+        }
+      ],
+      "avoid_colors": [
+        {
+          "name": "Pure White",
+          "hex": "#FFFFFF"
+        },
+        {
+          "name": "Bright Fuchsia",
+          "hex": "#FF00FF"
+        },
+        {
+          "name": "Electric Blue",
+          "hex": "#0000FF"
+        },
+        {
+          "name": "Icy Colors",
+          "hex": "#E8F4FC"
+        },
+        {
+          "name": "Hot Pink",
+          "hex": "#FF69B4"
+        },
+        {
+          "name": "Bright Yellow",
+          "hex": "#FFFF00"
+        },
+        {
+          "name": "Black",
+          "hex": "#000000"
+        },
+        {
+          "name": "Cool Gray",
+          "hex": "#95A5A6"
+        },
+        {
+          "name": "Stark Contrast",
+          "hex": "#F0F0F0"
+        },
+        {
+          "name": "Cobalt Blue",
+          "hex": "#0047AB"
+        },
+        {
+          "name": "Neon Green",
+          "hex": "#00FF00"
+        },
+        {
+          "name": "Cool Purple",
+          "hex": "#6C3483"
+        }
+      ],
+      "best_metals": "Matte gold, antique bronze, pewter",
+      "avoid_metals": "Bright silver, shiny platinum"
+    },
+    "clothes": {
+      "tops": {
+        "wear": "Soft rust blouses, muted olive shirts, warm taupe knits, dusty orange sweaters, warm gray tees, muted gold tops",
+        "avoid": "Pure white tops, bright fuchsia shirts, electric blue blouses, icy cool colors \u2014 too stark for your softness"
+      },
+      "bottoms": {
+        "wear": "Warm gray trousers, dusty olive pants, warm taupe skirts, muted camel shorts, soft terracotta bottoms",
+        "avoid": "Stark white bottoms, bright neon pants, cool gray skirts, icy pastel bottoms"
+      },
+      "bags_and_shoes": {
+        "wear": "Warm taupe bags, muted brown shoes, soft camel accessories, antique bronze accents, dusty tan totes",
+        "avoid": "Bright silver bags, stark white shoes, icy metallic accessories"
+      },
+      "metals_jewelry_gems": {
+        "wear": "Matte gold, antique bronze, pewter, warm amber, smoky quartz, muted citrine, soft tiger eye",
+        "avoid": "Bright shiny silver, platinum, highly polished metals, cool blue gems"
+      },
+      "pairing_tips": "Blend muted warm tones \u2014 soft rust top with warm taupe trousers and matte bronze jewelry for a harmonious Soft Autumn look."
+    },
+    "outfit_images": {
+      "casual": "",
+      "smart_casual": "",
+      "classic": "",
+      "streetwear": "",
+      "retro": "",
+      "formal": ""
+    },
+    "makeup": {
+      "foundation": {
+        "wear": "Warm or neutral-warm foundation with a soft, natural finish \u2014 light to medium coverage",
+        "avoid": "Cool pink or gray-toned foundations \u2014 clashes with your soft warm undertone"
+      },
+      "lips": {
+        "wear": "Soft terracotta, muted warm brown, dusty peach, warm mauve, muted brick, soft copper rose",
+        "avoid": "Bright vivid lips, cool berry, stark red \u2014 too strong and cool for your soft warm coloring"
+      },
+      "eyes": {
+        "wear": "Soft warm brown, muted taupe, dusty olive, warm gray, soft copper, muted caramel",
+        "avoid": "Cool gray, silver, vivid bright colors \u2014 too cool and too stark for your soft warmth"
+      },
+      "blush": {
+        "wear": "Soft warm peach, muted terracotta, dusty warm pink \u2014 soft and warm to match your gentle coloring",
+        "avoid": "Vivid coral, cool mauve, stark colors \u2014 too vivid or too cool for your softness"
+      }
+    }
+  },
+  "autumn_deep": {
+    "display_name": "Deep Autumn",
+    "season": "autumn",
+    "subtype": "deep",
+    "undertone": "Warm",
+    "depth": "Deep",
+    "chroma": "Muted-Rich",
+    "overview": {
+      "tagline": "Rich, intense, and powerfully earthy.",
+      "description": "Deep Autumn is the darkest and richest of the Autumn sub-types, bridging Autumn and Deep Winter. Your features are deep, warm, and high-contrast \u2014 with medium to deep warm-toned skin, dark warm brown or espresso hair, and rich dark warm eyes in deep brown or hazel. Your best colors are deep, warm, and rich \u2014 dark chocolate, deep rust, forest green, deep olive, burgundy, and deep teal. Light pastels and cool icy colors wash you out completely. You need deep, warm, earthy colors that match the intensity and richness of your natural coloring.",
+      "keywords": [
+        "deep",
+        "rich",
+        "warm",
+        "intense",
+        "earthy"
+      ]
+    },
+    "palette": {
+      "best_colors": [
+        {
+          "name": "Dark Chocolate",
+          "hex": "#3D1C02"
+        },
+        {
+          "name": "Deep Rust",
+          "hex": "#8B2500"
+        },
+        {
+          "name": "Forest Green",
+          "hex": "#228B22"
+        },
+        {
+          "name": "Deep Olive",
+          "hex": "#556B2F"
+        },
+        {
+          "name": "Burgundy",
+          "hex": "#800020"
+        },
+        {
+          "name": "Deep Teal",
+          "hex": "#008080"
+        },
+        {
+          "name": "Warm Black",
+          "hex": "#1C1008"
+        },
+        {
+          "name": "Deep Gold",
+          "hex": "#B8860B"
+        },
+        {
+          "name": "Dark Camel",
+          "hex": "#9A7B4F"
+        },
+        {
+          "name": "Deep Terracotta",
+          "hex": "#8B3A2A"
+        },
+        {
+          "name": "Rich Bronze",
+          "hex": "#8C6239"
+        },
+        {
+          "name": "Dark Moss",
+          "hex": "#4A5240"
+        }
+      ],
+      "avoid_colors": [
+        {
+          "name": "Pure White",
+          "hex": "#FFFFFF"
+        },
+        {
+          "name": "Pastel Pink",
+          "hex": "#FFB6C1"
+        },
+        {
+          "name": "Baby Blue",
+          "hex": "#D6EAF8"
+        },
+        {
+          "name": "Icy Lavender",
+          "hex": "#E6E6FA"
+        },
+        {
+          "name": "Cool Gray",
+          "hex": "#95A5A6"
+        },
+        {
+          "name": "Bright Fuchsia",
+          "hex": "#FF00FF"
+        },
+        {
+          "name": "Electric Blue",
+          "hex": "#0000FF"
+        },
+        {
+          "name": "Light Peach",
+          "hex": "#FFE5CC"
+        },
+        {
+          "name": "Neon Yellow",
+          "hex": "#FFFF00"
+        },
+        {
+          "name": "Hot Pink",
+          "hex": "#FF69B4"
+        },
+        {
+          "name": "Cool Pink",
+          "hex": "#E8A0BF"
+        },
+        {
+          "name": "Silver",
+          "hex": "#C0C0C0"
+        }
+      ],
+      "best_metals": "Deep gold, antique bronze, dark copper",
+      "avoid_metals": "Silver, platinum, bright metals"
+    },
+    "clothes": {
+      "tops": {
+        "wear": "Dark chocolate tops, deep rust blouses, forest green shirts, deep olive knits, rich burgundy sweaters, warm black tees",
+        "avoid": "Pastel colors, pale pink blouses, baby blue shirts, icy lavender \u2014 too light and cool for your depth"
+      },
+      "bottoms": {
+        "wear": "Dark chocolate trousers, deep olive pants, forest green skirts, rich burgundy shorts, warm dark brown chinos",
+        "avoid": "Pale pastel bottoms, cool gray pants, icy pink skirts, light airy colors"
+      },
+      "bags_and_shoes": {
+        "wear": "Deep chocolate leather bags, dark cognac boots, rich brown shoes, forest green accessories, dark gold accents",
+        "avoid": "Pastel bags, light beige shoes, silver metallic accessories, cool-toned bags"
+      },
+      "metals_jewelry_gems": {
+        "wear": "Deep gold, antique bronze, dark copper, smoky topaz, deep amber, garnet, rich tiger eye, dark citrine",
+        "avoid": "Silver, platinum, light cool gems, bright shiny metals \u2014 go deep and rich"
+      },
+      "pairing_tips": "Go deep and rich \u2014 dark chocolate top with forest green trousers and dark gold jewelry for a powerful Deep Autumn look."
+    },
+    "outfit_images": {
+      "casual": "",
+      "smart_casual": "",
+      "classic": "",
+      "streetwear": "",
+      "retro": "",
+      "formal": ""
+    },
+    "makeup": {
+      "foundation": {
+        "wear": "Deep warm foundation \u2014 golden, olive, or warm brown undertone with medium to full coverage",
+        "avoid": "Cool or ashy foundations \u2014 makes your deep warm skin look dull and gray"
+      },
+      "lips": {
+        "wear": "Deep brick red, dark chocolate brown, deep rust, rich burgundy with warm undertone, deep terracotta, dark copper",
+        "avoid": "Cool berry, blue-based burgundy, cool plum, pastel lips \u2014 too cool and too light for your deep coloring"
+      },
+      "eyes": {
+        "wear": "Deep warm brown, espresso, dark rust, forest green, deep olive, rich copper, dark bronze",
+        "avoid": "Cool gray, silver, icy colors, pastel shadows \u2014 too light and too cool for your intense depth"
+      },
+      "blush": {
+        "wear": "Deep warm terracotta, rich copper, dark warm peach, deep bronze blush",
+        "avoid": "Light pastels, cool pink, icy tones \u2014 disappear against your deep coloring"
+      }
+    }
+  },
+  "winter_cool": {
+    "display_name": "Cool Winter",
+    "season": "winter",
+    "subtype": "cool",
+    "undertone": "Cool",
+    "depth": "Medium to Deep",
+    "chroma": "Clear",
+    "overview": {
+      "tagline": "Bold, icy, and strikingly high-contrast.",
+      "description": "Cool Winter is defined by cool undertones, high contrast, and a naturally bold, striking appearance. Your features are clear and high-contrast \u2014 with cool pink or blue undertones in your skin, dark cool brown or black hair, and bright cool-toned eyes in blue, gray, or cool green. Your best colors are pure, icy, or deeply saturated \u2014 true white, cobalt, navy, emerald, true red, fuchsia, hot pink, and burgundy. Warm, earthy colors like beige, camel, rust, olive, and orange completely wash out your natural vibrancy. Silver jewelry always flatters you more than gold.",
+      "keywords": [
+        "cool",
+        "high contrast",
+        "bold",
+        "icy",
+        "striking"
+      ]
+    },
+    "palette": {
+      "best_colors": [
+        {
+          "name": "Icy Blue",
+          "hex": "#D6EAF8"
+        },
+        {
+          "name": "Royal Blue",
+          "hex": "#2471A3"
+        },
+        {
+          "name": "True Red",
+          "hex": "#C0392B"
+        },
+        {
+          "name": "Hot Pink",
+          "hex": "#E91E8C"
+        },
+        {
+          "name": "Burgundy",
+          "hex": "#6D1A36"
+        },
+        {
+          "name": "Charcoal",
+          "hex": "#2C3E50"
+        },
+        {
+          "name": "Emerald",
+          "hex": "#1E8449"
+        },
+        {
+          "name": "Ice Pink",
+          "hex": "#FADBD8"
+        },
+        {
+          "name": "Cobalt Blue",
+          "hex": "#0047AB"
+        },
+        {
+          "name": "Fuchsia",
+          "hex": "#C0392B"
+        },
+        {
+          "name": "Navy",
+          "hex": "#1A2657"
+        },
+        {
+          "name": "Ice Lavender",
+          "hex": "#D7BDE2"
+        }
+      ],
+      "avoid_colors": [
+        {
+          "name": "Warm Beige",
+          "hex": "#F5CBA7"
+        },
+        {
+          "name": "Camel",
+          "hex": "#C19A6B"
+        },
+        {
+          "name": "Orange",
+          "hex": "#E67E22"
+        },
+        {
+          "name": "Yellow",
+          "hex": "#F1C40F"
+        },
+        {
+          "name": "Rust",
+          "hex": "#B7410E"
+        },
+        {
+          "name": "Warm Brown",
+          "hex": "#784212"
+        },
+        {
+          "name": "Olive",
+          "hex": "#7D6608"
+        },
+        {
+          "name": "Peach",
+          "hex": "#FFDAB9"
+        },
+        {
+          "name": "Terracotta",
+          "hex": "#C1440E"
+        },
+        {
+          "name": "Gold",
+          "hex": "#D4AC0D"
+        },
+        {
+          "name": "Tomato Red",
+          "hex": "#CB4335"
+        },
+        {
+          "name": "Warm Mauve",
+          "hex": "#C39BD3"
+        }
+      ],
+      "best_metals": "Silver, white gold, platinum",
+      "avoid_metals": "Yellow gold, rose gold, copper"
+    },
+    "clothes": {
+      "tops": {
+        "wear": "True red blouses, cobalt blue shirts, fuchsia tops, hot pink knits, icy lavender tees, emerald green button-downs, crisp white shirts, black tops",
+        "avoid": "Peach tops, camel sweaters, rust blouses, warm orange shirts \u2014 these dull your natural vibrancy"
+      },
+      "bottoms": {
+        "wear": "Black trousers, charcoal pants, navy skirts, cobalt blue shorts, deep burgundy chinos, crisp white bottoms",
+        "avoid": "Warm brown bottoms, olive pants, camel skirts, beige trousers"
+      },
+      "bags_and_shoes": {
+        "wear": "Black leather bags, white structured bags, navy totes, deep burgundy shoes, cobalt accessories, silver metallic bags",
+        "avoid": "Tan bags, camel shoes, warm brown leather, golden accessories"
+      },
+      "metals_jewelry_gems": {
+        "wear": "Silver jewelry, white gold, platinum, diamonds, sapphires, rubies, emeralds, amethysts, pearls",
+        "avoid": "Yellow gold, rose gold, warm bronze, amber stones, citrine \u2014 adds unwanted warmth"
+      },
+      "pairing_tips": "High contrast works in your favor \u2014 bold cobalt top with black trousers and silver jewelry is a signature Cool Winter look."
+    },
+    "outfit_images": {
+      "casual": "",
+      "smart_casual": "",
+      "classic": "",
+      "streetwear": "",
+      "retro": "",
+      "formal": ""
+    },
+    "makeup": {
+      "foundation": {
+        "wear": "Cool or neutral-pink undertone foundation \u2014 look for C or N shades with a rosy or neutral cast",
+        "avoid": "Warm, peach, or golden foundations \u2014 makes skin look orange and unnatural"
+      },
+      "lips": {
+        "wear": "Blue-based reds, true red, berry, fuchsia, hot pink, deep burgundy, cool nude leaning rosy",
+        "avoid": "Warm peach nudes, coral, warm orange-red \u2014 clashes with your cool high-contrast coloring"
+      },
+      "eyes": {
+        "wear": "Icy pink, silver, charcoal, navy, deep plum, cool gray, black liner and mascara",
+        "avoid": "Warm brown, bronze, gold eyeshadow \u2014 adds warmth that fights your cool natural contrast"
+      },
+      "blush": {
+        "wear": "Cool rose, raspberry, soft fuchsia, cool pink \u2014 enhances your natural cool flush",
+        "avoid": "Warm peach, coral, orange-toned blush \u2014 clashes with your cool undertone"
+      }
+    }
+  },
+  "winter_deep": {
+    "display_name": "Deep Winter",
+    "season": "winter",
+    "subtype": "deep",
+    "undertone": "Cool-Neutral",
+    "depth": "Deep",
+    "chroma": "Clear-Rich",
+    "overview": {
+      "tagline": "Deep, dramatic, and intensely cool.",
+      "description": "Deep Winter is the darkest and most dramatic of the Winter sub-types, bridging Winter and Deep Autumn with a cool undertone. Your features are deep, cool, and high-contrast \u2014 with medium to deep cool-toned skin, very dark brown or black hair, and dark cool-toned eyes in deep brown, black-brown, or dark hazel. Your best colors are deep, cool, and rich \u2014 true black, deep navy, dark burgundy, deep plum, dark forest green, and charcoal. Light, warm, or pastel colors completely disappear against your deep, intense coloring. You look most powerful in deep, cool, dramatic tones.",
+      "keywords": [
+        "deep",
+        "cool",
+        "dramatic",
+        "intense",
+        "rich"
+      ]
+    },
+    "palette": {
+      "best_colors": [
+        {
+          "name": "True Black",
+          "hex": "#000000"
+        },
+        {
+          "name": "Pure White",
+          "hex": "#FFFFFF"
+        },
+        {
+          "name": "Deep Navy",
+          "hex": "#0D1B2A"
+        },
+        {
+          "name": "Dark Burgundy",
+          "hex": "#4A0E2A"
+        },
+        {
+          "name": "Dark Forest Green",
+          "hex": "#1A3A1A"
+        },
+        {
+          "name": "Deep Plum",
+          "hex": "#4A1A4A"
+        },
+        {
+          "name": "Charcoal",
+          "hex": "#1C2526"
+        },
+        {
+          "name": "Deep Cobalt",
+          "hex": "#003080"
+        },
+        {
+          "name": "Rich Crimson",
+          "hex": "#8B0000"
+        },
+        {
+          "name": "Dark Teal",
+          "hex": "#004040"
+        },
+        {
+          "name": "Deep Espresso",
+          "hex": "#2A1008"
+        },
+        {
+          "name": "Graphite",
+          "hex": "#383838"
+        }
+      ],
+      "avoid_colors": [
+        {
+          "name": "Pastel Yellow",
+          "hex": "#FFFACD"
+        },
+        {
+          "name": "Light Peach",
+          "hex": "#FFE5CC"
+        },
+        {
+          "name": "Warm Beige",
+          "hex": "#F5DEB3"
+        },
+        {
+          "name": "Camel",
+          "hex": "#C19A6B"
+        },
+        {
+          "name": "Light Orange",
+          "hex": "#FFA07A"
+        },
+        {
+          "name": "Warm Coral",
+          "hex": "#FF6B4A"
+        },
+        {
+          "name": "Golden Yellow",
+          "hex": "#FFD700"
+        },
+        {
+          "name": "Rust",
+          "hex": "#B7410E"
+        },
+        {
+          "name": "Warm Brown",
+          "hex": "#784212"
+        },
+        {
+          "name": "Olive",
+          "hex": "#808000"
+        },
+        {
+          "name": "Light Gray",
+          "hex": "#D3D3D3"
+        },
+        {
+          "name": "Dusty Rose",
+          "hex": "#DCB4B4"
+        }
+      ],
+      "best_metals": "Silver, dark silver, gunmetal",
+      "avoid_metals": "Yellow gold, rose gold, warm bronze"
+    },
+    "clothes": {
+      "tops": {
+        "wear": "True black tops, deep navy blouses, dark burgundy shirts, deep plum knits, dark forest green tees, charcoal sweaters",
+        "avoid": "Pastel yellow tops, light peach blouses, warm beige shirts, light dusty rose \u2014 too soft for your depth"
+      },
+      "bottoms": {
+        "wear": "Black trousers, deep navy pants, dark charcoal skirts, rich burgundy shorts, dark espresso chinos",
+        "avoid": "Light warm beige bottoms, camel pants, light gray skirts, pastel bottoms"
+      },
+      "bags_and_shoes": {
+        "wear": "Black leather bags, deep navy totes, dark charcoal shoes, graphite accessories, dark silver accents",
+        "avoid": "Light tan bags, warm beige shoes, camel leather, golden metallic accessories"
+      },
+      "metals_jewelry_gems": {
+        "wear": "Silver, dark silver, gunmetal, onyx, dark sapphire, deep amethyst, black diamonds, hematite",
+        "avoid": "Yellow gold, rose gold, warm bronze, amber, citrine \u2014 adds warmth that clashes with your cool depth"
+      },
+      "pairing_tips": "Embrace deep monochromatic dressing \u2014 all-black or black with deep navy creates a striking, powerful Deep Winter look."
+    },
+    "outfit_images": {
+      "casual": "",
+      "smart_casual": "",
+      "classic": "",
+      "streetwear": "",
+      "retro": "",
+      "formal": ""
+    },
+    "makeup": {
+      "foundation": {
+        "wear": "Deep cool or neutral foundation \u2014 medium to full coverage with cool or neutral undertone",
+        "avoid": "Warm or golden foundations \u2014 creates an orange cast on your cool deep skin"
+      },
+      "lips": {
+        "wear": "Deep plum, dark burgundy, dark navy red, deep berry, oxblood, dark chocolate with cool undertone",
+        "avoid": "Warm nudes, coral, warm red, peach \u2014 too warm and too light for your deep cool intensity"
+      },
+      "eyes": {
+        "wear": "Charcoal, dark navy, deep plum, onyx, dark gray, graphite \u2014 dramatic and deep",
+        "avoid": "Warm bronze, gold, copper, light pastels \u2014 too warm and too light for your deep dramatic features"
+      },
+      "blush": {
+        "wear": "Deep cool berry, dark raspberry, deep cool rose \u2014 deep and cool to match your intensity",
+        "avoid": "Light peach, warm coral, soft pink \u2014 too light and too warm, disappears or clashes"
+      }
+    }
+  },
+  "winter_bright": {
+    "display_name": "Bright Winter",
+    "season": "winter",
+    "subtype": "bright",
+    "undertone": "Cool-Neutral",
+    "depth": "Medium",
+    "chroma": "Bright-Clear",
+    "overview": {
+      "tagline": "Vivid, clear, and powerfully contrasted.",
+      "description": "Bright Winter is the most vivid and clear of the Winter sub-types, sharing the brightness of Bright Spring but with a distinctly cool undertone. Your features are bright, cool, and high-contrast \u2014 with clear cool-toned skin, dark hair, and strikingly vivid cool-toned eyes that command attention. Your best colors are bright, cool, and clear \u2014 true white, black, bright cobalt, true red, hot pink, electric blue, emerald, and fuchsia. Warm, muted, or dusty colors dull your natural brilliance. You thrive in the most vivid, clear, and high-contrast color combinations.",
+      "keywords": [
+        "bright",
+        "vivid",
+        "cool",
+        "clear",
+        "high contrast"
+      ]
+    },
+    "palette": {
+      "best_colors": [
+        {
+          "name": "True White",
+          "hex": "#FFFFFF"
+        },
+        {
+          "name": "Black",
+          "hex": "#000000"
+        },
+        {
+          "name": "Bright Cobalt",
+          "hex": "#0050C8"
+        },
+        {
+          "name": "True Red",
+          "hex": "#CC0000"
+        },
+        {
+          "name": "Hot Pink",
+          "hex": "#FF0090"
+        },
+        {
+          "name": "Electric Blue",
+          "hex": "#0060FF"
+        },
+        {
+          "name": "Emerald Green",
+          "hex": "#008040"
+        },
+        {
+          "name": "Bright Fuchsia",
+          "hex": "#C80060"
+        },
+        {
+          "name": "Icy Pink",
+          "hex": "#FFB0C8"
+        },
+        {
+          "name": "Navy",
+          "hex": "#001A50"
+        },
+        {
+          "name": "Clear Purple",
+          "hex": "#8000C0"
+        },
+        {
+          "name": "Bright Teal",
+          "hex": "#008080"
+        }
+      ],
+      "avoid_colors": [
+        {
+          "name": "Warm Beige",
+          "hex": "#F5DEB3"
+        },
+        {
+          "name": "Camel",
+          "hex": "#C19A6B"
+        },
+        {
+          "name": "Orange",
+          "hex": "#FF6600"
+        },
+        {
+          "name": "Mustard",
+          "hex": "#FFDB58"
+        },
+        {
+          "name": "Rust",
+          "hex": "#B7410E"
+        },
+        {
+          "name": "Warm Brown",
+          "hex": "#784212"
+        },
+        {
+          "name": "Dusty Colors",
+          "hex": "#A0908080"
+        },
+        {
+          "name": "Muted Mauve",
+          "hex": "#B0828C"
+        },
+        {
+          "name": "Olive",
+          "hex": "#808000"
+        },
+        {
+          "name": "Terracotta",
+          "hex": "#C1440E"
+        },
+        {
+          "name": "Warm Coral",
+          "hex": "#FF6B4A"
+        },
+        {
+          "name": "Gold",
+          "hex": "#D4AC0D"
+        }
+      ],
+      "best_metals": "Silver, bright silver, white gold",
+      "avoid_metals": "Yellow gold, rose gold, antique metals"
+    },
+    "clothes": {
+      "tops": {
+        "wear": "True white blouses, black tops, bright cobalt shirts, true red knits, hot pink tees, electric blue button-downs, vivid fuchsia tops",
+        "avoid": "Warm beige tops, camel sweaters, orange shirts, mustard blouses, muted dusty colors"
+      },
+      "bottoms": {
+        "wear": "Black trousers, white pants, navy skirts, cobalt blue shorts, crisp white chinos, dark navy bottoms",
+        "avoid": "Warm camel bottoms, olive pants, beige skirts, muted warm-toned bottoms"
+      },
+      "bags_and_shoes": {
+        "wear": "Black leather bags, white structured bags, bright cobalt accessories, silver metallic shoes, vivid clear-colored bags",
+        "avoid": "Warm tan bags, camel shoes, golden accessories, muted warm-toned bags"
+      },
+      "metals_jewelry_gems": {
+        "wear": "Bright silver, polished white gold, crystal, diamonds, clear sapphire, bright amethyst, vivid blue topaz",
+        "avoid": "Yellow gold, rose gold, antique metals, warm amber stones \u2014 keep metals bright and clear"
+      },
+      "pairing_tips": "Maximum contrast is your superpower \u2014 true white top with black trousers and bright silver jewelry is the perfect Bright Winter statement."
+    },
+    "outfit_images": {
+      "casual": "",
+      "smart_casual": "",
+      "classic": "",
+      "streetwear": "",
+      "retro": "",
+      "formal": ""
+    },
+    "makeup": {
+      "foundation": {
+        "wear": "Cool or neutral foundation with a natural to luminous finish \u2014 your skin needs to glow",
+        "avoid": "Matte warm foundations, yellow or peachy bases \u2014 dulls your natural bright contrast"
+      },
+      "lips": {
+        "wear": "True red, hot pink, bright fuchsia, vivid berry, electric pink, clear cool red \u2014 bold and bright",
+        "avoid": "Muted nudes, warm coral, dusty rose \u2014 too muted for your bright vivid coloring"
+      },
+      "eyes": {
+        "wear": "Bright silver, icy blue, vivid plum, clear cobalt, electric teal, stark black liner \u2014 bold and clear",
+        "avoid": "Muted warm colors, bronze, gold, dusty shadows \u2014 dulls your bright clear features"
+      },
+      "blush": {
+        "wear": "Bright cool pink, vivid rose, clear fuchsia \u2014 bold and vivid to match your bright coloring",
+        "avoid": "Warm peach, muted mauve, dusty colors \u2014 too soft and too warm for your vibrancy"
+      }
+    }
+  }
+}
