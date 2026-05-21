@@ -3,6 +3,8 @@
 import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Nav from "@/components/Nav";
+import FaceCapture from "@/components/FaceCapture";
+import PhotoCropper from "@/components/PhotoCropper";
 
 /* ── Step types ─────────────────────────────────────────── */
 type Step = "name" | "style" | "age" | "photo";
@@ -170,6 +172,8 @@ export default function OnboardingPage() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [preparing, setPreparing] = useState(false);
+  const [photoMode, setPhotoMode] = useState<"camera" | "upload" | "crop">("camera");
+  const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
 
   const advance = (from: Step, to: Step) => {
     setCompleted((prev) => new Set([...prev, from]));
@@ -177,9 +181,9 @@ export default function OnboardingPage() {
   };
 
   const handlePhotoFile = useCallback((file: File) => {
-    setPhoto(file);
     const url = URL.createObjectURL(file);
-    setPhotoPreview(url);
+    setRawImageSrc(url);
+    setPhotoMode("crop");
   }, []);
 
   const handleDrop = useCallback(
@@ -320,77 +324,99 @@ export default function OnboardingPage() {
 
           {/* ── Step 4: Photo ──────────────────────────── */}
           {step === "photo" && (
-            <div className="w-full max-w-xl flex flex-col items-center gap-6">
+            <div className="w-full max-w-xs flex flex-col items-center gap-5">
               <div className="text-center">
-                <h1 className="text-[36px] font-black leading-tight tracking-tight mb-2">
-                  Take or Upload a Photo
+                <h1 className="text-[32px] font-black leading-tight tracking-tight mb-1">
+                  {photoPreview ? "Looking good!" : "Take a selfie"}
                 </h1>
-                <p className="text-base text-neutral-500">
-                  Use good lighting and face the camera for best results.
+                <p className="text-sm text-neutral-500">
+                  {photoPreview
+                    ? "Ready to analyze your color season."
+                    : "Align your face in the oval and hold still."}
                 </p>
               </div>
 
-              {/* Drop zone / preview */}
-              <div
-                onDrop={handleDrop}
-                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                onDragLeave={() => setDragOver(false)}
-                className={`w-full rounded-3xl flex items-center justify-center transition-all overflow-hidden ${
-                  photoPreview
-                    ? "aspect-[3/4] bg-neutral-100"
-                    : `aspect-[4/3] border-2 border-dashed ${dragOver ? "border-black bg-neutral-50" : "border-black/20"}`
-                }`}
-              >
-                {photoPreview ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="flex flex-col items-center gap-3 text-neutral-400 p-8 text-center">
-                    <svg viewBox="0 0 48 48" fill="none" className="w-12 h-12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                      <rect x="4" y="12" width="40" height="30" rx="4" />
-                      <circle cx="24" cy="27" r="8" />
-                      <path d="M18 12l3-6h6l3 6" />
-                    </svg>
-                    <p className="text-sm font-medium">Drop your photo here</p>
+              {/* Camera capture or preview */}
+              {photoPreview ? (
+                /* ── Captured preview ── */
+                <div className="w-full flex flex-col items-center gap-4">
+                  <div className="w-full aspect-[3/4] rounded-3xl overflow-hidden bg-neutral-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
                   </div>
-                )}
-              </div>
-
-              {/* Buttons */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handlePhotoFile(file);
-                }}
-              />
-              <div className="flex gap-3 w-full">
-                <button
-                  onClick={() => {
-                    if (fileInputRef.current) {
-                      fileInputRef.current.setAttribute("capture", "environment");
-                      fileInputRef.current.click();
-                    }
+                  <button
+                    onClick={() => {
+                      setPhoto(null);
+                      setPhotoPreview(null);
+                      setRawImageSrc(null);
+                      setPhotoMode("camera");
+                    }}
+                    className="text-sm text-neutral-500 underline underline-offset-2 hover:text-black transition-colors"
+                  >
+                    Retake photo
+                  </button>
+                </div>
+              ) : photoMode === "crop" && rawImageSrc ? (
+                /* ── Crop uploaded image ── */
+                <PhotoCropper
+                  imageSrc={rawImageSrc}
+                  onCrop={(file, preview) => {
+                    setPhoto(file);
+                    setPhotoPreview(preview);
+                    setPhotoMode("upload");
                   }}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 border-2 border-black/12 rounded-xl font-semibold text-sm hover:border-black/30 transition-colors"
-                >
-                  <CameraIcon /> Take a Photo
-                </button>
-                <button
-                  onClick={() => {
-                    if (fileInputRef.current) {
-                      fileInputRef.current.removeAttribute("capture");
-                      fileInputRef.current.click();
-                    }
+                  onCancel={() => {
+                    setRawImageSrc(null);
+                    setPhotoMode("upload");
                   }}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 border-2 border-black/12 rounded-xl font-semibold text-sm hover:border-black/30 transition-colors"
-                >
-                  <UploadIcon /> Upload or Drag
-                </button>
-              </div>
+                />
+              ) : photoMode === "camera" ? (
+                /* ── Live camera ── */
+                <FaceCapture
+                  onCapture={(file, preview) => {
+                    setPhoto(file);
+                    setPhotoPreview(preview);
+                  }}
+                  onError={() => setPhotoMode("upload")}
+                />
+              ) : (
+                /* ── Upload fallback ── */
+                <div className="w-full flex flex-col items-center gap-4">
+                  <div
+                    onDrop={handleDrop}
+                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                    onDragLeave={() => setDragOver(false)}
+                    className={`w-full aspect-[4/3] rounded-3xl border-2 border-dashed flex items-center justify-center transition-all ${
+                      dragOver ? "border-black bg-neutral-50" : "border-black/20"
+                    }`}
+                  >
+                    <div className="flex flex-col items-center gap-3 text-neutral-400 p-8 text-center">
+                      <svg viewBox="0 0 48 48" fill="none" className="w-12 h-12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                        <rect x="4" y="12" width="40" height="30" rx="4" />
+                        <circle cx="24" cy="27" r="8" />
+                        <path d="M18 12l3-6h6l3 6" />
+                      </svg>
+                      <p className="text-sm font-medium">Drop your photo here</p>
+                    </div>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handlePhotoFile(file);
+                    }}
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-2 px-6 py-3 border-2 border-black/12 rounded-xl font-semibold text-sm hover:border-black/30 transition-colors"
+                  >
+                    <UploadIcon /> Choose a Photo
+                  </button>
+                </div>
+              )}
 
               <p className="flex items-center gap-1.5 text-xs text-neutral-400">
                 <ShieldIcon /> Your photo is never stored or shared

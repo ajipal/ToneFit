@@ -7,7 +7,6 @@ Backbone: CLIP ViT-B/16 loaded via OpenAI CLIP, then patched with FaRL weights.
          Fallback: ResNeXt50 (torchvision, ImageNet pretrained).
 
 Architecture (flat two-head baseline — matches the original paper):
-<<<<<<< HEAD
     backbone (512-d) → shared FC: 512→256, ReLU, Dropout(0.5)
         ├── season_head:  FC 256 → 4   (Season, 4-class)
         └── subtype_head: FC 256 → 12  (Sub-Type, 12-class)
@@ -15,18 +14,6 @@ Architecture (flat two-head baseline — matches the original paper):
 Feature caching: backbone runs once before training, outputs saved to
 results/features_train_farl.pt and results/features_test_farl.pt.
 Each epoch only trains the small classifier heads — no ViT forward pass.
-=======
-    backbone (512-d) -> shared FC: 512->256, ReLU, Dropout(0.5)
-        +-- season_head:  FC 256 -> 4   (Season, 4-class)
-        +-- subtype_head: FC 256 -> 12  (Sub-Type, 12-class)
-
-Multitask loss: loss = CrossEntropy(season) + CrossEntropy(subtype)
-The subtype head acts as a regularizer, improving season accuracy.
-
-Feature caching: backbone runs once before training, outputs saved to
-results/features_train_farl.pt and results/features_test_farl.pt.
-Each epoch only trains the small classifier heads — no ViT forward pass per epoch.
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
 
 Requires:
     pip install git+https://github.com/openai/CLIP.git
@@ -36,21 +23,12 @@ Usage:
     python train_farl.py --recache   # force re-extraction of features
 
 Outputs:
-<<<<<<< HEAD
     models/farl_model.pth              — best model checkpoint (by val season accuracy)
     results/features_train_farl.pt     — cached backbone features (train)
     results/features_test_farl.pt      — cached backbone features (test)
     results/farl_history.json          — per-epoch loss/accuracy history
     results/farl_training.png          — training curve plot
     results/farl_test_report.txt       — classification report on test set
-=======
-    models/farl_model.pth              -- best model checkpoint (by val season accuracy)
-    results/features_train_farl.pt     -- cached backbone features (train)
-    results/features_test_farl.pt      -- cached backbone features (test)
-    results/farl_history.json          -- per-epoch loss/accuracy history
-    results/farl_training.png          -- training curve plot
-    results/farl_test_report.txt       -- classification report on test set
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
 """
 
 import argparse
@@ -92,18 +70,6 @@ HISTORY_OUT  = "results/farl_history.json"
 PLOT_OUT     = "results/farl_training.png"
 REPORT_OUT   = "results/farl_test_report.txt"
 
-<<<<<<< HEAD
-SEASONS = ["autumn", "spring", "summer", "winter"]
-SUBTYPE_CLASSES = [
-    "autumn_deep", "autumn_soft", "autumn_warm",
-    "spring_bright", "spring_light", "spring_warm",
-    "summer_cool", "summer_light", "summer_soft",
-    "winter_bright", "winter_cool", "winter_deep",
-]
-SEASON_TO_IDX  = {s: i for i, s in enumerate(SEASONS)}
-SUBTYPE_TO_IDX = {s: i for i, s in enumerate(SUBTYPE_CLASSES)}
-
-=======
 CACHE_TRAIN = "results/features_train_farl.pt"
 CACHE_TEST  = "results/features_test_farl.pt"
 
@@ -117,7 +83,6 @@ SUBTYPE_CLASSES = [
 SEASON_TO_IDX  = {s: i for i, s in enumerate(SEASONS)}
 SUBTYPE_TO_IDX = {s: i for i, s in enumerate(SUBTYPE_CLASSES)}
 
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
 EPOCHS       = 50
 BATCH_SIZE   = 64
 LR           = 1e-3
@@ -127,12 +92,6 @@ ETA_MIN      = 1e-5
 
 FARL_FEATURE_DIM    = 512
 RESNEXT_FEATURE_DIM = 2048
-<<<<<<< HEAD
-
-CACHE_TRAIN = "results/features_train_farl.pt"
-CACHE_TEST  = "results/features_test_farl.pt"
-=======
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
 
 # ---------------------------------------------------------------------------
 # DEVICE
@@ -229,24 +188,13 @@ def _extract_features(backbone, loader, device, flatten=False):
     return torch.cat(all_feats), torch.cat(all_seasons), torch.cat(all_subtypes)
 
 
-<<<<<<< HEAD
 def build_or_load_cache(model, backbone_name, train_loader, test_loader,
                         device, recache=False):
     """Cache frozen backbone features once. Returns train/test cached loaders."""
-    # Also re-extract if old cache format is missing subtype labels
-    def _cache_valid(path):
-        if not os.path.exists(path):
-            return False
-        d = torch.load(path, map_location="cpu")
-=======
-def build_or_load_cache(model, backbone_name, train_loader_raw, test_loader_raw,
-                        device, recache=False):
-    """Cache frozen backbone features once. Returns train/test TensorDataset loaders."""
     def _cache_valid(path):
         if not os.path.exists(path):
             return False
         d = torch.load(path, map_location="cpu", weights_only=False)
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
         return "season_labels" in d and "subtype_labels" in d
 
     need_cache = recache or not (_cache_valid(CACHE_TRAIN) and _cache_valid(CACHE_TEST))
@@ -257,15 +205,9 @@ def build_or_load_cache(model, backbone_name, train_loader_raw, test_loader_raw,
         t0 = time.time()
         model.backbone.eval()
         tr_feats, tr_szn, tr_sub = _extract_features(
-<<<<<<< HEAD
             model.backbone, train_loader, device, flatten=is_resnext)
         te_feats, te_szn, te_sub = _extract_features(
             model.backbone, test_loader, device, flatten=is_resnext)
-=======
-            model.backbone, train_loader_raw, device, flatten=is_resnext)
-        te_feats, te_szn, te_sub = _extract_features(
-            model.backbone, test_loader_raw, device, flatten=is_resnext)
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
         torch.save({"features": tr_feats, "season_labels": tr_szn,
                     "subtype_labels": tr_sub}, CACHE_TRAIN)
         torch.save({"features": te_feats, "season_labels": te_szn,
@@ -275,13 +217,8 @@ def build_or_load_cache(model, backbone_name, train_loader_raw, test_loader_raw,
               f"Train: {len(tr_feats)} | Test: {len(te_feats)} | "
               f"Feature dim: {tr_feats.shape[1]}")
     else:
-<<<<<<< HEAD
-        tr = torch.load(CACHE_TRAIN, map_location="cpu")
-        te = torch.load(CACHE_TEST,  map_location="cpu")
-=======
         tr = torch.load(CACHE_TRAIN, map_location="cpu", weights_only=False)
         te = torch.load(CACHE_TEST,  map_location="cpu", weights_only=False)
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
         tr_feats, tr_szn, tr_sub = tr["features"], tr["season_labels"], tr["subtype_labels"]
         te_feats, te_szn, te_sub = te["features"], te["season_labels"], te["subtype_labels"]
         print(f"[CACHE] Loaded cached features. "
@@ -302,15 +239,9 @@ def build_or_load_cache(model, backbone_name, train_loader_raw, test_loader_raw,
 
 class FaRLModel(nn.Module):
     """
-<<<<<<< HEAD
     CLIP ViT-B/16 + FaRL weights → frozen backbone → flat two-head classifier.
     Flat = season and sub-type heads independently connected to shared features.
     This matches the original paper's baseline architecture.
-=======
-    CLIP ViT-B/16 + FaRL weights -> frozen backbone -> flat two-head classifier.
-    Shared trunk feeds both season (4-class) and subtype (12-class) heads.
-    Multitask loss improves season accuracy via subtype regularization.
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
     """
 
     def __init__(self, visual_backbone, feature_dim: int = FARL_FEATURE_DIM):
@@ -366,11 +297,7 @@ def load_model():
             )
 
         clip_model, _ = clip.load("ViT-B/16", device="cpu")
-<<<<<<< HEAD
-        farl_state = torch.load(str(farl_path), map_location="cpu")
-=======
         farl_state = torch.load(str(farl_path), map_location="cpu", weights_only=False)
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
         state_dict = farl_state.get("state_dict", farl_state)
         cleaned = {k.replace("module.", ""): v for k, v in state_dict.items()}
         missing, unexpected = clip_model.load_state_dict(cleaned, strict=False)
@@ -411,7 +338,6 @@ def train_one_epoch_cached(model, loader, optimizer, crit_szn, crit_sub):
     model.season_head.train()
     model.subtype_head.train()
 
-<<<<<<< HEAD
     total_loss = 0.0
     correct_szn = correct_sub = total = 0
 
@@ -420,32 +346,15 @@ def train_one_epoch_cached(model, loader, optimizer, crit_szn, crit_sub):
         shared         = model.shared(features)
         szn_logits     = model.season_head(shared)
         sub_logits     = model.subtype_head(shared)
-=======
-    total_loss = correct_szn = correct_sub = total = 0
-
-    for features, season_labels, subtype_labels in loader:
-        optimizer.zero_grad()
-        shared     = model.shared(features)
-        szn_logits = model.season_head(shared)
-        sub_logits = model.subtype_head(shared)
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
         loss = crit_szn(szn_logits, season_labels) + crit_sub(sub_logits, subtype_labels)
         loss.backward()
         optimizer.step()
 
-<<<<<<< HEAD
         bs = features.size(0)
         total_loss  += loss.item() * bs
         correct_szn += (szn_logits.argmax(1) == season_labels).sum().item()
         correct_sub += (sub_logits.argmax(1) == subtype_labels).sum().item()
         total       += bs
-=======
-        bs          = features.size(0)
-        total_loss += loss.item() * bs
-        correct_szn += (szn_logits.argmax(1) == season_labels).sum().item()
-        correct_sub += (sub_logits.argmax(1) == subtype_labels).sum().item()
-        total      += bs
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
 
     return total_loss / total, correct_szn / total, correct_sub / total
 
@@ -455,12 +364,8 @@ def evaluate_cached(model, loader, crit_szn, crit_sub):
     model.season_head.eval()
     model.subtype_head.eval()
 
-<<<<<<< HEAD
     total_loss = 0.0
     correct_szn = correct_sub = total = 0
-=======
-    total_loss = correct_szn = correct_sub = total = 0
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
 
     with torch.no_grad():
         for features, season_labels, subtype_labels in loader:
@@ -469,19 +374,11 @@ def evaluate_cached(model, loader, crit_szn, crit_sub):
             sub_logits = model.subtype_head(shared)
             loss = crit_szn(szn_logits, season_labels) + crit_sub(sub_logits, subtype_labels)
 
-<<<<<<< HEAD
             bs = features.size(0)
             total_loss  += loss.item() * bs
             correct_szn += (szn_logits.argmax(1) == season_labels).sum().item()
             correct_sub += (sub_logits.argmax(1) == subtype_labels).sum().item()
             total       += bs
-=======
-            bs          = features.size(0)
-            total_loss += loss.item() * bs
-            correct_szn += (szn_logits.argmax(1) == season_labels).sum().item()
-            correct_sub += (sub_logits.argmax(1) == subtype_labels).sum().item()
-            total      += bs
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
 
     return total_loss / total, correct_szn / total, correct_sub / total
 
@@ -517,11 +414,7 @@ def plot_training_curves(history: dict, best_epoch: int, save_path: str):
     epochs_range = range(1, len(history["train_loss"]) + 1)
 
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
-<<<<<<< HEAD
     fig.suptitle("FaRL Baseline Training Curves", fontsize=14, fontweight="bold")
-=======
-    fig.suptitle("FaRL Flat Baseline Training Curves", fontsize=14, fontweight="bold")
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
 
     ax = axes[0]
     ax.plot(epochs_range, history["train_loss"], label="Train Loss", color="steelblue")
@@ -569,17 +462,10 @@ def plot_training_curves(history: dict, best_epoch: int, save_path: str):
 # ---------------------------------------------------------------------------
 
 def main():
-<<<<<<< HEAD
     parser = argparse.ArgumentParser(description="Train FaRL Model A (flat baseline)")
     parser.add_argument("--recache", action="store_true",
                         help="Force re-extraction of backbone features")
     args, _ = parser.parse_known_args()  # ignore Jupyter kernel args
-=======
-    parser = argparse.ArgumentParser(description="Train FaRL Model A (flat two-head baseline)")
-    parser.add_argument("--recache", action="store_true",
-                        help="Force re-extraction of backbone features")
-    args, _ = parser.parse_known_args()
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
 
     print("=" * 60)
     print("  ToneFit — FaRL Flat Baseline (Model A)")
@@ -588,23 +474,14 @@ def main():
     os.makedirs("models",  exist_ok=True)
     os.makedirs("results", exist_ok=True)
 
-<<<<<<< HEAD
     # ------------------------------------------------------------------
     # 1. Load datasets
     # ------------------------------------------------------------------
-=======
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
     if not os.path.isdir(TRAIN_DIR):
         raise FileNotFoundError(f"Training folder not found: {TRAIN_DIR}")
     if not os.path.isdir(TEST_DIR):
         raise FileNotFoundError(f"Test folder not found: {TEST_DIR}")
 
-<<<<<<< HEAD
-=======
-    # ------------------------------------------------------------------
-    # 1. Load datasets
-    # ------------------------------------------------------------------
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
     train_dataset = FaRLDataset(root=TRAIN_DIR, transform=val_transform)
     test_dataset  = FaRLDataset(root=TEST_DIR,  transform=val_transform)
 
@@ -622,7 +499,6 @@ def main():
     szn_labels_list = [szn for _, szn, _ in train_dataset.samples]
     sub_labels_list = [sub for _, _, sub in train_dataset.samples]
 
-<<<<<<< HEAD
     szn_weights = compute_class_weight("balanced",
                                        classes=np.arange(4),
                                        y=np.array(szn_labels_list))
@@ -631,14 +507,6 @@ def main():
                                        y=np.array(sub_labels_list))
 
     print(f"\n[INFO] Season class weights:  {dict(zip(SEASONS, szn_weights.round(4)))}")
-=======
-    szn_weights = compute_class_weight("balanced", classes=np.arange(4),
-                                        y=np.array(szn_labels_list))
-    sub_weights = compute_class_weight("balanced", classes=np.arange(12),
-                                        y=np.array(sub_labels_list))
-
-    print(f"\n[INFO] Season class weights: {dict(zip(SEASONS, szn_weights.round(4)))}")
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
     szn_weight_tensor = torch.tensor(szn_weights, dtype=torch.float32).to(device)
     sub_weight_tensor = torch.tensor(sub_weights, dtype=torch.float32).to(device)
 
@@ -675,15 +543,9 @@ def main():
     crit_szn = nn.CrossEntropyLoss(weight=szn_weight_tensor)
     crit_sub = nn.CrossEntropyLoss(weight=sub_weight_tensor)
 
-<<<<<<< HEAD
     head_params = list(model.shared.parameters()) + \
                   list(model.season_head.parameters()) + \
                   list(model.subtype_head.parameters())
-=======
-    head_params = (list(model.shared.parameters()) +
-                   list(model.season_head.parameters()) +
-                   list(model.subtype_head.parameters()))
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
     optimizer = torch.optim.AdamW(head_params, lr=LR, weight_decay=WEIGHT_DECAY)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
         optimizer, T_0=T_0, eta_min=ETA_MIN
@@ -704,10 +566,7 @@ def main():
         "train_season_acc": [], "val_season_acc": [],
         "train_subtype_acc": [], "val_subtype_acc": [],
     }
-<<<<<<< HEAD
 
-=======
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
     best_val_acc = 0.0
     best_epoch   = 1
 
@@ -741,7 +600,6 @@ def main():
         elapsed    = time.time() - t_start
         current_lr = optimizer.param_groups[0]["lr"]
         marker     = " <-- best" if epoch == best_epoch else ""
-<<<<<<< HEAD
         print(
             f"{epoch:>6}  {tr_loss:>8.4f}  {tr_szn:>7.4f}  {tr_sub:>7.4f}  "
             f"{vl_szn:>8.4f}  {vl_sub:>8.4f}  {current_lr:>10.2e}  "
@@ -751,15 +609,6 @@ def main():
         if epoch == 1:
             print(f"[INFO] Estimated total time: {elapsed * EPOCHS / 60:.1f} min")
 
-=======
-        print(f"{epoch:>6}  {tr_loss:>8.4f}  {tr_szn:>7.4f}  {tr_sub:>7.4f}  "
-              f"{vl_szn:>8.4f}  {vl_sub:>8.4f}  {current_lr:>10.2e}  "
-              f"{elapsed:>5.1f}s{marker}")
-
-        if epoch == 1:
-            print(f"[INFO] Estimated total time: {elapsed * EPOCHS / 60:.1f} min")
-
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
     print("-" * 80)
     print(f"\n[INFO] Training complete.")
     print(f"[INFO] Best val season accuracy: {best_val_acc:.4f} at epoch {best_epoch}")
@@ -770,21 +619,12 @@ def main():
     # ------------------------------------------------------------------
     # 8. Save history
     # ------------------------------------------------------------------
-<<<<<<< HEAD
-    history["best_epoch"]          = best_epoch
-    history["best_val_acc"]        = round(best_val_acc, 6)       # season (kept for compat)
+    history["best_epoch"]           = best_epoch
+    history["best_val_acc"]         = round(best_val_acc, 6)       # season (kept for compat)
     history["best_val_subtype_acc"] = round(best_sub_at_best, 6)
-    history["backbone"]            = backbone_name
-    history["epochs"]              = EPOCHS
-    history["batch_size"]          = BATCH_SIZE
-=======
-    history["best_epoch"]            = best_epoch
-    history["best_val_acc"]          = round(best_val_acc, 6)
-    history["best_val_subtype_acc"]  = round(best_sub_at_best, 6)
-    history["backbone"]              = backbone_name
-    history["epochs"]                = EPOCHS
-    history["batch_size"]            = BATCH_SIZE
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
+    history["backbone"]             = backbone_name
+    history["epochs"]               = EPOCHS
+    history["batch_size"]           = BATCH_SIZE
 
     with open(HISTORY_OUT, "w") as f:
         json.dump(history, f, indent=2)
@@ -799,24 +639,16 @@ def main():
     # 10. Final classification reports
     # ------------------------------------------------------------------
     print(f"\n[INFO] Loading best model for final test evaluation...")
-<<<<<<< HEAD
-    ckpt = torch.load(MODEL_OUT, map_location=device)
-=======
     ckpt = torch.load(MODEL_OUT, map_location=device, weights_only=False)
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
     model.shared.load_state_dict(ckpt["shared"])
     model.season_head.load_state_dict(ckpt["season_head"])
     model.subtype_head.load_state_dict(ckpt["subtype_head"])
 
     szn_true, szn_pred, sub_true, sub_pred = get_all_predictions_cached(model, test_loader)
 
-<<<<<<< HEAD
     # Season report
     season_report = classification_report(
         szn_true, szn_pred, target_names=SEASONS, digits=4)
-=======
-    season_report = classification_report(szn_true, szn_pred, target_names=SEASONS, digits=4)
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
 
     print("\n" + "=" * 60)
     print("  Final Test Classification Report — Season (4-class)")
@@ -827,16 +659,11 @@ def main():
     print(season_report)
 
     szn_cm = confusion_matrix(szn_true, szn_pred)
-<<<<<<< HEAD
     print("Confusion Matrix — Season (rows=actual, cols=predicted):")
-=======
-    print("Season Confusion Matrix (rows=actual, cols=predicted):")
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
     print(f"{'':12s} " + "  ".join(f"{s:>8s}" for s in SEASONS))
     for i, row in enumerate(szn_cm):
         print(f"{SEASONS[i]:12s} " + "  ".join(f"{v:>8d}" for v in row))
 
-<<<<<<< HEAD
     autumn_idx     = SEASONS.index("autumn")
     aut_correct    = szn_cm[autumn_idx, autumn_idx]
     aut_total      = szn_cm[autumn_idx].sum()
@@ -868,30 +695,6 @@ def main():
         f.write(f"Best Epoch : {best_epoch}\n")
         f.write(f"Best Season Acc: {best_val_acc:.4f}\n")
         f.write(f"SubType Acc    : {best_sub_at_best:.4f}\n")
-=======
-    autumn_idx  = SEASONS.index("autumn")
-    aut_correct = szn_cm[autumn_idx, autumn_idx]
-    aut_total   = szn_cm[autumn_idx].sum()
-    print(f"\n[NOTE] Autumn recall: {aut_correct/aut_total:.4f} ({aut_correct}/{aut_total})")
-
-    subtype_report = classification_report(sub_true, sub_pred,
-                                           target_names=SUBTYPE_CLASSES, digits=4)
-
-    print("\n" + "=" * 60)
-    print("  Final Test Classification Report — Sub-Type (12-class)")
-    print("=" * 60)
-    print(f"  Sub-Type Acc at best epoch: {best_sub_at_best:.4f}")
-    print("=" * 60)
-    print(subtype_report)
-
-    with open(REPORT_OUT, "w") as f:
-        f.write("ToneFit — FaRL Flat Baseline (Model A) — Test Report\n")
-        f.write("=" * 60 + "\n")
-        f.write(f"Backbone      : {backbone_name}\n")
-        f.write(f"Best Epoch    : {best_epoch}\n")
-        f.write(f"Best Season Acc: {best_val_acc:.4f}\n")
-        f.write(f"SubType Acc   : {best_sub_at_best:.4f}\n")
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
         f.write("=" * 60 + "\n\n")
         f.write("Season Classification Report:\n")
         f.write(season_report)
@@ -899,18 +702,13 @@ def main():
         f.write(f"{'':12s} " + "  ".join(f"{s:>8s}" for s in SEASONS) + "\n")
         for i, row in enumerate(szn_cm):
             f.write(f"{SEASONS[i]:12s} " + "  ".join(f"{v:>8d}" for v in row) + "\n")
-<<<<<<< HEAD
+        f.write(f"\n[NOTE] Autumn recall: {aut_correct/aut_total:.4f} ({aut_correct}/{aut_total})\n")
         f.write("\n\nSub-Type Classification Report:\n")
         f.write(subtype_report)
         f.write("\nSub-Type Confusion Matrix (rows=actual, cols=predicted):\n")
         f.write(f"{'':16s} " + " ".join(f"{s.split('_')[1]:>7s}" for s in SUBTYPE_CLASSES) + "\n")
         for i, row in enumerate(sub_cm):
             f.write(f"{SUBTYPE_CLASSES[i]:16s} " + " ".join(f"{v:>7d}" for v in row) + "\n")
-=======
-        f.write(f"\nAutumn recall: {aut_correct/aut_total:.4f} ({aut_correct}/{aut_total})\n")
-        f.write("\n\nSub-Type Classification Report:\n")
-        f.write(subtype_report)
->>>>>>> 1a31814da67fa0778a8ad4f409ba39357db76389
 
     print(f"\n[INFO] Test report saved to: {REPORT_OUT}")
     print("\n[DONE] FaRL training pipeline finished successfully.")

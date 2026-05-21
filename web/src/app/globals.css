@@ -1,6 +1,24 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+
+  --color-spring: #E8856A;
+  --color-spring-light: #FDDECA;
+  --color-spring-dark: #C4614A;
+
+  --color-summer: #8BAEC4;
+  --color-summer-light: #D8E8F4;
+  --color-summer-dark: #5A85A0;
+
+  --color-autumn: #C4773A;
+  --color-autumn-light: #F4DFC0;
+  --color-autumn-dark: #8A4E1E;
+
+  --color-winter: #2D3E6E;
+  --color-winter-light: #C8D4F0;
+  --color-winter-dark: #0A1832;
+}
 
 @layer base {
   * {
