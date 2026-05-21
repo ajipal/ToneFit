@@ -36,6 +36,8 @@ export default function ProcessingPage() {
 
     function tryRedirect() {
       if (subtypeResult && animationComplete) {
+        // Persist photo for results page display, then clear session
+        try { localStorage.setItem("tonefit_last_photo", photo); } catch {}
         sessionStorage.removeItem("tonefit_photo");
         router.push(`/results?season=${subtypeResult}`);
       }
@@ -47,17 +49,25 @@ export default function ProcessingPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ photo }),
     })
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      .then(async (r) => {
+        if (!r.ok) {
+          const body = await r.json().catch(() => ({}));
+          throw new Error(body.error ?? `HTTP ${r.status}`);
+        }
         return r.json();
       })
-      .then((data: { subtype: SeasonKey }) => {
-        subtypeResult = data.subtype;
+      .then((data: { subtype: SeasonKey; season: string }) => {
+        subtypeResult = data.subtype ?? (data.season as SeasonKey);
         tryRedirect();
       })
-      .catch((err) => {
+      .catch((err: Error) => {
         console.error("[processing] API error:", err);
-        setError("Could not reach the analysis server. Please try again.");
+        const msg = err.message ?? "";
+        if (msg.toLowerCase().includes("no face")) {
+          setError("no_face");
+        } else {
+          setError("Could not reach the analysis server. Please try again.");
+        }
       });
 
     // ── Progress bar animation (minimum 5 s for UX) ───────────────────────────
@@ -90,13 +100,34 @@ export default function ProcessingPage() {
 
   // ── Error state ───────────────────────────────────────────────────────────────
   if (error) {
+    const isNoFace = error === "no_face";
     return (
       <div className="min-h-screen bg-white text-black flex flex-col">
         <Nav showFullLinks={false} />
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="text-center max-w-md flex flex-col gap-6">
-            <h1 className="text-2xl font-black">Analysis failed</h1>
-            <p className="text-neutral-500 text-base">{error}</p>
+            {isNoFace ? (
+              <>
+                <div className="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center mx-auto">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="w-8 h-8 text-neutral-400">
+                    <circle cx="12" cy="8" r="4" />
+                    <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                    <line x1="4" y1="4" x2="20" y2="20" />
+                  </svg>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-black mb-2">No face detected</h1>
+                  <p className="text-neutral-500 text-base leading-relaxed">
+                    We couldn&apos;t find a face in your photo. Try a clear, well-lit front-facing photo with your full face visible.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <h1 className="text-2xl font-black">Analysis failed</h1>
+                <p className="text-neutral-500 text-base">{error}</p>
+              </>
+            )}
             <Link
               href="/onboarding"
               className="px-8 py-4 bg-black text-white rounded-xl font-semibold text-base hover:bg-neutral-800 transition-colors inline-block"

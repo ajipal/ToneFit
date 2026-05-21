@@ -45,6 +45,22 @@ SCALER_PATH       = MODELS_DIR / "scaler.pkl"
 SEASONS     = ["autumn", "spring", "summer", "winter"]
 NUM_CLASSES = 4
 
+# Must match SUBTYPE_CLASSES order in train_farl.py
+SUBTYPE_CLASSES = [
+    "autumn_deep", "autumn_soft", "autumn_warm",
+    "spring_bright", "spring_light", "spring_warm",
+    "summer_cool", "summer_light", "summer_soft",
+    "winter_bright", "winter_cool", "winter_deep",
+]
+
+# Default subtype when FaRL is not available (SVM gives season only)
+SEASON_DEFAULT_SUBTYPE = {
+    "autumn": "autumn_warm",
+    "spring": "spring_warm",
+    "summer": "summer_cool",
+    "winter": "winter_cool",
+}
+
 # SVM uses 7 color features in this order
 SVM_FEATURES = ["L_mean", "a_mean", "b_mean", "ITA", "H_mean", "S_mean", "V_mean"]
 # Full feature order that the scaler was fit on (from preprocess.py)
@@ -188,7 +204,7 @@ class FaRLHead(nn.Module):
 
     def forward(self, features):
         shared = self.shared(features)
-        return self.season_head(shared)
+        return self.season_head(shared), self.subtype_head(shared)
 
 
 # ─────────────────────────────────────────────
@@ -276,10 +292,25 @@ def farl_inference(backbone: nn.Module, head: nn.Module, pil_image: Image.Image)
     device = next(backbone.parameters()).device
     tensor = TRANSFORM(pil_image).unsqueeze(0).to(device)
     with torch.no_grad():
-        features = backbone(tensor)
-        logits   = head(features)
-        probs    = F.softmax(logits, dim=1).squeeze(0).cpu().tolist()
-    return {season: round(prob, 4) for season, prob in zip(SEASONS, probs)}
+        features          = backbone(tensor)
+        szn_logits, sub_logits = head(features)
+        szn_probs  = F.softmax(szn_logits,  dim=1).squeeze(0).cpu().tolist()
+        sub_probs  = F.softmax(sub_logits,  dim=1).squeeze(0).cpu().tolist()
+
+    season_conf = {s: round(p, 4) for s, p in zip(SEASONS, szn_probs)}
+    subtype_conf = {s: round(p, 4) for s, p in zip(SUBTYPE_CLASSES, sub_probs)}
+
+    top_season  = max(season_conf, key=season_conf.get)
+    top_subtype = max(subtype_conf, key=subtype_conf.get)
+    top3 = sorted(subtype_conf.items(), key=lambda x: x[1], reverse=True)[:3]
+
+    return {
+        "season": top_season,
+        "season_confidence": season_conf[top_season],
+        "subtype": top_subtype,
+        "subtype_confidence": subtype_conf[top_subtype],
+        "top3": [{"subtype": s, "confidence": c} for s, c in top3],
+    }
 
 # ─────────────────────────────────────────────
 #  SVM feature extraction + inference
@@ -320,7 +351,20 @@ def svm_inference(svm, scaler, pil_image: Image.Image) -> dict:
     scaled        = scaler.transform(full_features)
     svm_features  = scaled[:, SVM_COL_INDICES]
     proba         = svm.predict_proba(svm_features)[0]
-    return {season: round(float(p), 4) for season, p in zip(SEASONS, proba)}
+    probs = {season: round(float(p), 4) for season, p in zip(SEASONS, proba)}
+
+    # Return raw (unscaled) feature values for display
+    raw = full_features[0]
+    raw_features = {
+        "L_mean": round(float(raw[0]), 2),
+        "a_mean": round(float(raw[1]), 2),
+        "b_mean": round(float(raw[2]), 2),
+        "ITA":    round(float(raw[6]), 2),
+        "H_mean": round(float(raw[7]), 2),
+        "S_mean": round(float(raw[8]), 4),
+        "V_mean": round(float(raw[9]), 4),
+    }
+    return {"probs": probs, "raw_features": raw_features}
 
 # ─────────────────────────────────────────────
 #  Response schemas
@@ -333,9 +377,10 @@ class ModelStatus(BaseModel):
 
 class PredictionResponse(BaseModel):
     season: str
-    confidence: float
-    farl: dict | None = None
-    svm: dict | None = None
+    subtype: str
+    season_confidence: float
+    subtype_confidence: float
+    top3: list[dict]
     face_detected: bool
 
 # ─────────────────────────────────────────────
@@ -369,6 +414,20 @@ def health():
     }
 
 
+# ── POST /check-face ──────────────────────────────────────────────────────────
+
+@app.post("/check-face")
+async def check_face(file: UploadFile = File(...)):
+    """Lightweight face detection only — no ML inference."""
+    contents = await file.read()
+    try:
+        image = Image.open(io.BytesIO(contents)).convert("RGB")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid image file.")
+    face = detect_and_crop_face(image)
+    return {"face_detected": face is not None}
+
+
 # ── POST /predict ──────────────────────────────────────────────────────────────
 
 @app.post("/predict", response_model=PredictionResponse)
@@ -382,37 +441,136 @@ async def predict(file: UploadFile = File(...)):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid image file.")
 
-    face         = detect_and_crop_face(image)
-    input_image  = face if face is not None else image
+    face = detect_and_crop_face(image)
+    if face is None:
+        raise HTTPException(status_code=400, detail="No face detected. Please upload a clear photo with your face visible.")
 
-    farl_conf, svm_conf = None, None
+    farl_result, svm_result = None, None
 
     if _farl_head is not None:
         try:
-            farl_conf = farl_inference(_farl_backbone, _farl_head, input_image)
+            farl_result = farl_inference(_farl_backbone, _farl_head, face)
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"FaRL inference error: {exc}")
 
     if _svm_model is not None:
         try:
-            svm_conf = svm_inference(_svm_model, _scaler, input_image)
+            svm_result = svm_inference(_svm_model, _scaler, face)
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"SVM inference error: {exc}")
 
-    available = [c for c in (farl_conf, svm_conf) if c is not None]
-    averaged  = {
-        s: sum(c[s] for c in available) / len(available)
-        for s in SEASONS
-    }
-    top_season = max(averaged, key=averaged.get)
+    svm_probs = svm_result["probs"] if svm_result else None
 
-    return PredictionResponse(
-        season=top_season,
-        confidence=round(averaged[top_season], 4),
-        farl=farl_conf,
-        svm=svm_conf,
-        face_detected=face is not None,
-    )
+    # Use FaRL result if available (includes subtype); fall back to SVM season only
+    if farl_result is not None:
+        avg_season_conf = round(
+            (farl_result["season_confidence"] + svm_probs.get(farl_result["season"], 0)) / 2, 4
+        ) if svm_probs else farl_result["season_confidence"]
+
+        return PredictionResponse(
+            season=farl_result["season"],
+            subtype=farl_result["subtype"],
+            season_confidence=avg_season_conf,
+            subtype_confidence=farl_result["subtype_confidence"],
+            top3=farl_result["top3"],
+            face_detected=face is not None,
+        )
+    else:
+        top_season  = max(svm_probs, key=svm_probs.get)
+        top_subtype = SEASON_DEFAULT_SUBTYPE[top_season]
+        return PredictionResponse(
+            season=top_season,
+            subtype=top_subtype,
+            season_confidence=round(svm_probs[top_season], 4),
+            subtype_confidence=round(svm_probs[top_season], 4),
+            top3=[{"subtype": SEASON_DEFAULT_SUBTYPE[s], "confidence": round(c, 4)}
+                  for s, c in sorted(svm_probs.items(), key=lambda x: x[1], reverse=True)[:3]],
+            face_detected=face is not None,
+        )
+
+
+# ── POST /compare ─────────────────────────────────────────────────────────────
+
+@app.post("/compare")
+async def compare(file: UploadFile = File(...)):
+    """Return full per-model breakdown for the comparison page."""
+    if _farl_head is None and _svm_model is None:
+        raise HTTPException(status_code=503, detail="No models are loaded.")
+
+    contents = await file.read()
+    try:
+        image = Image.open(io.BytesIO(contents)).convert("RGB")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid image file.")
+
+    face = detect_and_crop_face(image)
+    if face is None:
+        raise HTTPException(status_code=400, detail="No face detected. Please upload a clear photo with your face visible.")
+
+    farl_result, svm_result = None, None
+
+    if _farl_head is not None:
+        try:
+            device = next(_farl_backbone.parameters()).device
+            tensor = TRANSFORM(face).unsqueeze(0).to(device)
+            with torch.no_grad():
+                feats  = _farl_backbone(tensor)
+                szn_l, sub_l = _farl_head(feats)
+                szn_p  = F.softmax(szn_l, dim=1).squeeze(0).cpu().tolist()
+                sub_p  = F.softmax(sub_l, dim=1).squeeze(0).cpu().tolist()
+
+            season_probs  = {s: round(p, 4) for s, p in zip(SEASONS, szn_p)}
+            subtype_probs = {s: round(p, 4) for s, p in zip(SUBTYPE_CLASSES, sub_p)}
+            top_season    = max(season_probs,  key=season_probs.get)
+            top_subtype   = max(subtype_probs, key=subtype_probs.get)
+            top3 = sorted(subtype_probs.items(), key=lambda x: x[1], reverse=True)[:3]
+
+            farl_result = {
+                "available": True,
+                "season": top_season,
+                "season_confidence": season_probs[top_season],
+                "season_probs": season_probs,
+                "subtype": top_subtype,
+                "subtype_confidence": subtype_probs[top_subtype],
+                "subtype_probs": subtype_probs,
+                "top3": [{"subtype": s, "confidence": c} for s, c in top3],
+            }
+        except Exception as exc:
+            farl_result = {"available": False, "error": str(exc)}
+
+    if _svm_model is not None:
+        try:
+            svm_out    = svm_inference(_svm_model, _scaler, face)
+            probs      = svm_out["probs"]
+            top_season = max(probs, key=probs.get)
+            svm_result = {
+                "available": True,
+                "season": top_season,
+                "season_confidence": probs[top_season],
+                "season_probs": probs,
+                "features_used": SVM_FEATURES,
+                "raw_features": svm_out["raw_features"],
+            }
+        except Exception as exc:
+            svm_result = {"available": False, "error": str(exc)}
+
+    # Final combined prediction
+    if farl_result and farl_result.get("available"):
+        final_season  = farl_result["season"]
+        final_subtype = farl_result["subtype"]
+    elif svm_result and svm_result.get("available"):
+        final_season  = svm_result["season"]
+        final_subtype = SEASON_DEFAULT_SUBTYPE[final_season]
+    else:
+        raise HTTPException(status_code=500, detail="Both models failed.")
+
+    return {
+        "face_detected": face is not None,
+        "final_season":  final_season,
+        "final_subtype": final_subtype,
+        "farl": farl_result or {"available": False, "error": _farl_error},
+        "svm":  svm_result  or {"available": False, "error": _svm_error},
+    }
 
 
 # ── GET /seasons/{season} ──────────────────────────────────────────────────────

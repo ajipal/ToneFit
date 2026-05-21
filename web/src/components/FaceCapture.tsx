@@ -31,7 +31,7 @@ const READY_FRAMES = 55; // ~1.8 s at 30 fps before auto-capture
 
 interface Props {
   onCapture: (file: File, preview: string) => void;
-  onError: () => void; // called when camera is unavailable → show upload fallback
+  onError: (reason: "permission" | "no-camera" | "unknown") => void;
 }
 
 /* ── Oval overlay renderer ───────────────────────────────────────────────── */
@@ -262,8 +262,13 @@ export default function FaceCapture({ onCapture, onError }: Props) {
 
         setStatus("no-face");
         rafRef.current = requestAnimationFrame(analyze);
-      } catch {
-        onError();
+      } catch (err: unknown) {
+        const name = (err as DOMException)?.name ?? "";
+        const reason =
+          name === "NotAllowedError" ? "permission" :
+          name === "NotFoundError" || name === "DevicesNotFoundError" ? "no-camera" :
+          "unknown";
+        onError(reason);
       }
     }
     start();

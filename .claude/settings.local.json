@@ -15,7 +15,8 @@
       "Bash(pip install *)",
       "Bash(uvicorn --version)",
       "Bash(python -c \"import uvicorn; print\\(uvicorn.__file__\\)\")",
-      "Bash(\"C:\\\\Users\\\\ronco\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python310\\\\python.exe\" -m pip install scikit-image)"
+      "Bash(\"C:\\\\Users\\\\ronco\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python310\\\\python.exe\" -m pip install scikit-image)",
+      "Bash(npm run *)"
     ],
     "additionalDirectories": [
       "\\tmp",

@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, useRef, useCallback, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Nav from "@/components/Nav";
 import FaceCapture from "@/components/FaceCapture";
-import PhotoCropper from "@/components/PhotoCropper";
 
-/* ── Step types ─────────────────────────────────────────── */
+/* ── Step / photo-mode types ─────────────────────────────── */
 type Step = "name" | "style" | "age" | "photo";
+type PhotoMode = "select" | "camera" | "upload";
+type CameraError = "permission" | "no-camera" | "unknown" | null;
 const STEPS: Step[] = ["name", "style", "age", "photo"];
 const STEP_LABELS: Record<Step, string> = {
   name: "Name",
@@ -158,8 +159,9 @@ async function resizeAndEncode(file: File, maxPx = 1024): Promise<string> {
 }
 
 /* ── Main page ───────────────────────────────────────────── */
-export default function OnboardingPage() {
+function OnboardingInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState<Step>("name");
@@ -172,8 +174,26 @@ export default function OnboardingPage() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [preparing, setPreparing] = useState(false);
-  const [photoMode, setPhotoMode] = useState<"camera" | "upload" | "crop">("camera");
-  const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
+  const [photoMode, setPhotoMode] = useState<PhotoMode>("select");
+  const [cameraError, setCameraError] = useState<CameraError>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+
+  // Jump to photo step if returning from results with existing profile
+  useEffect(() => {
+    if (searchParams.get("step") === "photo") {
+      try {
+        const saved = localStorage.getItem("tonefit_profile");
+        if (saved) {
+          const profile = JSON.parse(saved);
+          if (profile.name)  setName(profile.name);
+          if (profile.style) setStyle(profile.style);
+          if (profile.age)   setAge(profile.age);
+        }
+      } catch {}
+      setCompleted(new Set<Step>(["name", "style", "age"]));
+      setStep("photo");
+    }
+  }, [searchParams]);
 
   const advance = (from: Step, to: Step) => {
     setCompleted((prev) => new Set([...prev, from]));
@@ -181,9 +201,9 @@ export default function OnboardingPage() {
   };
 
   const handlePhotoFile = useCallback((file: File) => {
-    const url = URL.createObjectURL(file);
-    setRawImageSrc(url);
-    setPhotoMode("crop");
+    setPhoto(file);
+    setPhotoPreview(URL.createObjectURL(file));
+    setPhotoError(null);
   }, []);
 
   const handleDrop = useCallback(
@@ -199,6 +219,25 @@ export default function OnboardingPage() {
   const handleAnalyze = async () => {
     if (!photo || preparing) return;
     setPreparing(true);
+    setPhotoError(null);
+
+    // Quick face check before navigating to processing
+    try {
+      const form = new FormData();
+      form.append("file", photo, "photo.jpg");
+      const res = await fetch("/api/check-face", { method: "POST", body: form });
+      if (res.ok) {
+        const { face_detected } = await res.json();
+        if (!face_detected) {
+          setPhotoError("no_face");
+          setPreparing(false);
+          return;
+        }
+      }
+      // If check-face fails (server down etc.) proceed anyway — processing will catch it
+    } catch {
+      // proceed
+    }
 
     localStorage.setItem("tonefit_profile", JSON.stringify({ name, style, age }));
 
@@ -327,67 +366,172 @@ export default function OnboardingPage() {
             <div className="w-full max-w-xs flex flex-col items-center gap-5">
               <div className="text-center">
                 <h1 className="text-[32px] font-black leading-tight tracking-tight mb-1">
-                  {photoPreview ? "Looking good!" : "Take a selfie"}
+                  {photoPreview ? "Looking good!" : "Add your photo"}
                 </h1>
                 <p className="text-sm text-neutral-500">
                   {photoPreview
                     ? "Ready to analyze your color season."
-                    : "Align your face in the oval and hold still."}
+                    : "Choose how you'd like to provide a photo."}
                 </p>
               </div>
 
-              {/* Camera capture or preview */}
               {photoPreview ? (
-                /* ── Captured preview ── */
+                /* ── Captured / uploaded preview ── */
                 <div className="w-full flex flex-col items-center gap-4">
-                  <div className="w-full aspect-[3/4] rounded-3xl overflow-hidden bg-neutral-100">
+                  <div className="w-full aspect-[3/4] rounded-3xl overflow-hidden bg-neutral-100 relative">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                    {photoError === "no_face" && (
+                      <div className="absolute inset-0 bg-black/50 flex items-end p-4">
+                        <div className="w-full rounded-2xl bg-white p-4 flex flex-col gap-2">
+                          <div className="flex items-center gap-2">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="w-5 h-5 text-neutral-500 shrink-0">
+                              <circle cx="12" cy="8" r="4" />
+                              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                              <line x1="4" y1="4" x2="20" y2="20" />
+                            </svg>
+                            <p className="text-sm font-bold text-black">No face detected</p>
+                          </div>
+                          <p className="text-xs text-neutral-500 leading-relaxed">
+                            Try a clear, well-lit front-facing photo with your full face visible.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
+                  {photoError === "no_face" ? (
+                    <button
+                      onClick={() => {
+                        setPhoto(null);
+                        setPhotoPreview(null);
+                        setPhotoError(null);
+                        setPhotoMode("upload");
+                      }}
+                      className="w-full py-3 bg-black text-white rounded-xl font-semibold text-sm hover:bg-neutral-800 transition-colors"
+                    >
+                      Upload a Different Photo
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setPhoto(null);
+                        setPhotoPreview(null);
+                        setPhotoMode("select");
+                        setCameraError(null);
+                      }}
+                      className="text-sm text-neutral-500 underline underline-offset-2 hover:text-black transition-colors"
+                    >
+                      Use a different photo
+                    </button>
+                  )}
+                </div>
+
+              ) : photoMode === "select" ? (
+                /* ── Method selection ── */
+                <div className="w-full flex flex-col gap-3">
                   <button
-                    onClick={() => {
-                      setPhoto(null);
-                      setPhotoPreview(null);
-                      setRawImageSrc(null);
-                      setPhotoMode("camera");
-                    }}
-                    className="text-sm text-neutral-500 underline underline-offset-2 hover:text-black transition-colors"
+                    onClick={() => { setCameraError(null); setPhotoMode("camera"); }}
+                    className="w-full flex items-center gap-5 p-5 rounded-2xl border-2 border-black/10 hover:border-black/40 transition-all text-left"
                   >
-                    Retake photo
+                    <div className="w-11 h-11 rounded-xl bg-neutral-100 flex items-center justify-center shrink-0">
+                      <CameraIcon />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm text-black">Take a Photo</p>
+                      <p className="text-xs text-neutral-500 mt-0.5">Use your device camera for a live selfie</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setPhotoMode("upload")}
+                    className="w-full flex items-center gap-5 p-5 rounded-2xl border-2 border-black/10 hover:border-black/40 transition-all text-left"
+                  >
+                    <div className="w-11 h-11 rounded-xl bg-neutral-100 flex items-center justify-center shrink-0">
+                      <UploadIcon />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm text-black">Upload an Image</p>
+                      <p className="text-xs text-neutral-500 mt-0.5">Choose a photo from your device</p>
+                    </div>
                   </button>
                 </div>
-              ) : photoMode === "crop" && rawImageSrc ? (
-                /* ── Crop uploaded image ── */
-                <PhotoCropper
-                  imageSrc={rawImageSrc}
-                  onCrop={(file, preview) => {
-                    setPhoto(file);
-                    setPhotoPreview(preview);
-                    setPhotoMode("upload");
-                  }}
-                  onCancel={() => {
-                    setRawImageSrc(null);
-                    setPhotoMode("upload");
-                  }}
-                />
+
               ) : photoMode === "camera" ? (
-                /* ── Live camera ── */
-                <FaceCapture
-                  onCapture={(file, preview) => {
-                    setPhoto(file);
-                    setPhotoPreview(preview);
-                  }}
-                  onError={() => setPhotoMode("upload")}
-                />
+                /* ── Live camera or camera error ── */
+                cameraError ? (
+                  <div className="w-full flex flex-col items-center gap-4">
+                    <div className="w-full rounded-2xl bg-neutral-50 border border-black/8 p-6 flex flex-col items-center gap-3 text-center">
+                      <div className="w-12 h-12 rounded-full bg-neutral-200 flex items-center justify-center">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="w-6 h-6 text-neutral-500">
+                          <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+                          <line x1="1" y1="1" x2="23" y2="23" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-black mb-1">
+                          {cameraError === "permission"
+                            ? "Camera permission denied"
+                            : cameraError === "no-camera"
+                            ? "No camera found"
+                            : "Camera unavailable"}
+                        </p>
+                        <p className="text-xs text-neutral-500 leading-relaxed">
+                          {cameraError === "permission"
+                            ? "Allow camera access in your browser settings and try again."
+                            : cameraError === "no-camera"
+                            ? "No camera device was detected on this device."
+                            : "Could not start the camera. Please try again or upload a photo."}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="w-full flex flex-col gap-2">
+                      <button
+                        onClick={() => { setCameraError(null); setPhotoMode("camera"); }}
+                        className="w-full py-3 border-2 border-black/12 rounded-xl font-semibold text-sm hover:border-black/30 transition-colors"
+                      >
+                        Try Again
+                      </button>
+                      <button
+                        onClick={() => { setCameraError(null); setPhotoMode("upload"); }}
+                        className="w-full py-3 bg-black text-white rounded-xl font-semibold text-sm hover:bg-neutral-800 transition-colors"
+                      >
+                        Upload a Photo Instead
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => { setCameraError(null); setPhotoMode("select"); }}
+                      className="text-xs text-neutral-400 underline underline-offset-2 hover:text-neutral-600 transition-colors"
+                    >
+                      Go back
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-full flex flex-col items-center gap-4">
+                    <FaceCapture
+                      onCapture={(file, preview) => {
+                        setPhoto(file);
+                        setPhotoPreview(preview);
+                      }}
+                      onError={(reason) => setCameraError(reason)}
+                    />
+                    <button
+                      onClick={() => setPhotoMode("select")}
+                      className="text-xs text-neutral-400 underline underline-offset-2 hover:text-neutral-600 transition-colors"
+                    >
+                      Switch to upload instead
+                    </button>
+                  </div>
+                )
+
               ) : (
-                /* ── Upload fallback ── */
+                /* ── Upload ── */
                 <div className="w-full flex flex-col items-center gap-4">
                   <div
                     onDrop={handleDrop}
                     onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                     onDragLeave={() => setDragOver(false)}
-                    className={`w-full aspect-[4/3] rounded-3xl border-2 border-dashed flex items-center justify-center transition-all ${
-                      dragOver ? "border-black bg-neutral-50" : "border-black/20"
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`w-full aspect-[4/3] rounded-3xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-all ${
+                      dragOver ? "border-black bg-neutral-50" : "border-black/20 hover:border-black/40"
                     }`}
                   >
                     <div className="flex flex-col items-center gap-3 text-neutral-400 p-8 text-center">
@@ -396,7 +540,7 @@ export default function OnboardingPage() {
                         <circle cx="24" cy="27" r="8" />
                         <path d="M18 12l3-6h6l3 6" />
                       </svg>
-                      <p className="text-sm font-medium">Drop your photo here</p>
+                      <p className="text-sm font-medium">Click or drop a photo here</p>
                     </div>
                   </div>
                   <input
@@ -410,10 +554,10 @@ export default function OnboardingPage() {
                     }}
                   />
                   <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-2 px-6 py-3 border-2 border-black/12 rounded-xl font-semibold text-sm hover:border-black/30 transition-colors"
+                    onClick={() => setPhotoMode("select")}
+                    className="text-xs text-neutral-400 underline underline-offset-2 hover:text-neutral-600 transition-colors"
                   >
-                    <UploadIcon /> Choose a Photo
+                    Go back
                   </button>
                 </div>
               )}
@@ -422,13 +566,13 @@ export default function OnboardingPage() {
                 <ShieldIcon /> Your photo is never stored or shared
               </p>
 
-              {photo && (
+              {photo && !photoError && (
                 <button
                   onClick={handleAnalyze}
                   disabled={preparing}
                   className="w-full py-4 bg-black text-white rounded-xl font-semibold text-base hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {preparing ? "Preparing…" : "Analyze My Color Season"}
+                  {preparing ? "Checking photo…" : "Analyze My Color Season"}
                 </button>
               )}
             </div>
@@ -436,5 +580,13 @@ export default function OnboardingPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense>
+      <OnboardingInner />
+    </Suspense>
   );
 }
