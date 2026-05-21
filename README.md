@@ -1,38 +1,76 @@
-# ToneFit ML
+# ToneFit AI
 
-**Machine Learning-Based Personal Color Season Prediction and Clothing Color Recommendation**
+**AI-Powered Personal Color Season Classification (Armocromia)**
 
-A pilot study applying machine learning to automate personal color season classification (Spring, Summer, Autumn, Winter) from facial images, using the Deep Armocromia dataset and comparing FaRL against DINOv2.
-
----
-
-## Project Overview
-
-ToneFit ML predicts a user's personal color season from a facial image and recommends suitable clothing color palettes. The system compares two Vision Transformer approaches — FaRL (Model A) and DINOv2 (Model B) — benchmarked against the Deep Armocromia paper baselines.
-
-- **Model A** — FaRL ViT-Base, Microsoft, pretrained on LAION-Face (face-specialized)
-- **Model B** — DINOv2 ViT-B/14, Meta AI, self-supervised general-purpose ViT
-
-**Output:** Predicted season + confidence scores from both models + clothing color palette + curated outfit sample photos
+A pilot study for the Data Science / Current Trends in IT course at Polytechnic University of the Philippines (PUP Manila). Compares FaRL-64 baseline vs. a novel two-stage hierarchical FaRL-64 head for 4-season and 12-subtype Armocromia classification, with a full Next.js web app for real-world deployment.
 
 ---
 
-## Introduction
+## What This Project Does
 
-Personal color analysis (Armocromia) classifies individuals into four seasonal color types — Spring, Summer, Autumn, Winter — based on skin tone, undertone, hair, and eye color. Each season maps to a recommended palette of clothing, accessories, and makeup. Korea has led mainstream adoption of this methodology, and the ECCV 2024 publication of the Deep Armocromia dataset (Stacchio et al., 2024) — the first large-scale dataset labeled by certified Armocromia professionals — opened the door to reproducible ML research in this domain.
+ToneFit predicts a user's personal color season from a facial photo — not just the broad 4-season category (Spring / Summer / Autumn / Winter), but one of **12 sub-types** (e.g., Deep Autumn, Bright Winter) — and generates a complete style guide covering color palettes, clothing, accessories, and makeup.
 
-Stacchio et al. found that FaRL64 (0.554 acc) and ResNeXt50 (0.513 acc) could classify the four seasons from face images, but did not evaluate DINOv2 (Oquab et al., 2023), a powerful general-purpose self-supervised ViT trained on 142 million images. ToneFit ML fills that gap: we compare FaRL and DINOv2 head-to-head on the same dataset using the same classifier head, and package the result into a publicly accessible Streamlit web app — the first tool to combine ML-based season prediction with full clothing, accessory, and makeup recommendations.
+The main academic contribution is the **two-stage hierarchical head**: Stage 2 (sub-type) is explicitly conditioned on Stage 1 (season) logits, which is novel for this domain.
 
 ---
 
-## Personal Color Seasons
+## Personal Color Season System
 
-| Season | Undertone | Characteristics |
-|--------|-----------|-----------------|
-| Spring | Warm, Light | Clear, peachy, bright |
-| Summer | Cool, Light | Muted, ashy, soft |
-| Autumn | Warm, Deep | Earthy, muted, rich |
-| Winter | Cool, Deep | High contrast, clear, bold |
+| Season | Sub-Type | Label |
+|--------|----------|-------|
+| Spring | Warm | `spring_warm` |
+| Spring | Light | `spring_light` |
+| Spring | Bright | `spring_bright` |
+| Summer | Cool | `summer_cool` |
+| Summer | Light | `summer_light` |
+| Summer | Soft | `summer_soft` |
+| Autumn | Warm | `autumn_warm` |
+| Autumn | Soft | `autumn_soft` |
+| Autumn | Deep | `autumn_deep` |
+| Winter | Cool | `winter_cool` |
+| Winter | Deep | `winter_deep` |
+| Winter | Bright | `winter_bright` |
+
+4-season rule: Spring + Autumn = Warm. Summer + Winter = Cool.
+
+---
+
+## Models
+
+### Model A — FaRL-64 Flat Two-Head Baseline (`train_farl.py`)
+- Frozen FaRL-64 backbone (CLIP ViT-B/16, 512-d output)
+- Shared FC(512→256, ReLU, Dropout 0.5) → season head (256→4) + subtype head (256→12)
+- Joint training: combined CE loss
+
+### Model B — FaRL-64 12-Class Single Head (`train_farl_12class.py`)
+- Same frozen backbone, single 12-class head only
+- Season derived from predicted sub-type
+- Adds Top-3 accuracy metric (paper standard)
+
+### Hierarchical Model — Novel Contribution (`train.py`)
+- Same frozen backbone
+- **Stage 1:** FC(768→384) → FC(384→4) — season classification
+- **Stage 2:** FC(384+4→12) — sub-type, conditioned on Stage 1 softmax
+- Stage 2 input = concat(shared features [384-d], season softmax [4-d]) = 388-d
+- This lets the sub-type head explicitly condition on the predicted season
+
+### Model C — FaRL-64 + LLRD + Unfreeze (`train_farl_improved.py`)
+- Created only if Model B achieves ≥ 0.30 sub-type accuracy
+- Unfreezes last 4 transformer blocks with layer-wise learning rate decay (LLRD)
+
+---
+
+## Results
+
+| Model | Season Acc | F1 | SubType Acc | Top-3 | Status |
+|-------|-----------|-----|-------------|-------|--------|
+| FaRL-16 (paper) | 0.525 | 0.516 | 0.318 | 0.663 | Baseline |
+| FaRL-64 (paper) | 0.554 | 0.548 | 0.313 | 0.651 | Baseline |
+| ResNeXt50 (paper) | 0.513 | 0.502 | 0.281 | 0.614 | Baseline |
+| Model A — FaRL-64 Flat | TBD | TBD | TBD | TBD | Needs rerun |
+| Model B — FaRL-64 12-class | TBD | TBD | TBD | TBD | Pending |
+| **Hierarchical FaRL-64** | **0.5636** | TBD | **0.3213** | TBD | Done ✓ |
+| Model C — FaRL-64 + LLRD | TBD | TBD | TBD | TBD | Pending |
 
 ---
 
@@ -40,43 +78,57 @@ Stacchio et al. found that FaRL64 (0.554 acc) and ResNeXt50 (0.513 acc) could cl
 
 ```
 ToneFit/
-├── collectdata.py         # Data collection script (reference only)
-├── preprocess.py          # Step 1: Extract CIELab/HSV features, generate data_split.csv
-├── eda.ipynb              # Step 2: Exploratory data analysis
-├── train_farl.py          # Step 3: Train FaRL ViT-Base model (Model A)
-├── train_dinov2.py        # Step 4: Train DINOv2 ViT-Base model (Model B)
-├── evaluate.py            # Step 5: Compare model performance vs paper baselines
-├── app.py                 # Step 6: Streamlit web app
-├── audit_dataset.py       # Optional: dataset quality check after preprocess.py
-├── RGB-M/                 # Deep Armocromia images (not tracked in git)
-│   ├── train/             # season subfolders with sub-type subfolders
-│   └── test/              # season subfolders with sub-type subfolders
-├── models/                # Saved model weights (not tracked in git)
-│   └── farl_weights.pth   # FaRL ep64 pretrained weights — download separately
-├── results/               # Evaluation outputs (not tracked in git)
-├── outfits/               # Curated outfit reference photos per season
-├── data_split.csv         # Train/test manifest — generated by preprocess.py
-├── features.csv           # CIELab/HSV features — generated by preprocess.py
-├── CLAUDE.md              # Full project brief
-└── README.md
+├── train.py                  ← Hierarchical model training (DONE)
+├── train_farl.py             ← Model A: FaRL-64 flat two-head baseline
+├── train_farl_12class.py     ← Model B: FaRL-64 12-class single head
+├── train_farl_improved.py    ← Model C: FaRL-64 + LLRD (create after Model B)
+├── hierarchical_head.py      ← Hierarchical head architecture
+├── evaluate.py               ← Compare all models vs paper baselines
+├── server.py                 ← FastAPI ML inference server (for Next.js frontend)
+├── app.py                    ← Streamlit demo app
+├── preprocess.py             ← EDA feature extraction
+├── annotations.csv           ← Original dataset annotations (Stacchio et al.)
+├── requirements.txt
+├── configs/
+│   └── hierarchical.yaml     ← Training config for hierarchical model
+├── models/
+│   └── farl_weights.pth      ← FaRL-64 pretrained weights (652 MB, gitignored)
+├── results/                  ← Training outputs: .pth checkpoints, history JSON, reports (gitignored)
+├── RGB-M/                    ← Deep Armocromia dataset — READ ONLY, do not modify
+│   ├── train/
+│   └── test/
+├── outfits/                  ← Curated outfit reference photos per season
+├── ToneFit_Colab.ipynb       ← Main training pipeline (run on Colab T4)
+├── eda.ipynb                 ← Exploratory data analysis
+├── CLAUDE.md                 ← Full project brief (source of truth)
+└── web/                      ← Next.js frontend (deployed on Vercel)
+    ├── src/app/
+    │   ├── page.tsx           ← Homepage
+    │   ├── onboarding/        ← 4-step onboarding (name, style, age, photo)
+    │   ├── processing/        ← Analysis loading screen + real API call
+    │   ├── results/           ← Season result + color palette + style guide
+    │   └── api/analyze/       ← Next.js proxy → Python ML server
+    ├── src/components/Nav.tsx
+    ├── src/lib/season-data.ts ← All 12-season style data
+    └── .env.local             ← PYTHON_API_URL (points to server.py)
 ```
 
 ---
 
 ## Dataset
 
-This project uses the **Deep Armocromia dataset** (Stacchio et al., ECCV 2024) — the first publicly available large-scale dataset of face images labeled by certified Armocromia professionals.
+**Deep Armocromia** (Stacchio et al., ECCV 2024) — the first large-scale dataset of face images labeled by certified Armocromia professionals.
 
-- ~4,920 expert-labeled face images
-- 4 classes: Spring, Autumn, Summer, Winter
-- Pre-defined train/test split included in `annotations.csv`
-- Download requires filling the request form (see below)
-
-Dataset obtained from the Deep Armocromia GitHub repository (github.com/lorenzo-stacchio/Deep-Armocromia) upon request. Place the `RGB-M/` folder in the project root directory.
+- ~4,920 expert-labeled face images across 12 sub-types
+- Pre-defined train/test split, nested as `RGB-M/train/<season>/<subtype>/`
+- Request access at: [github.com/lorenzo-stacchio/Deep-Armocromia](https://github.com/lorenzo-stacchio/Deep-Armocromia)
+- Place the `RGB-M/` folder in the project root — **never modify its contents**
 
 ---
 
 ## Setup
+
+### Python (ML training + inference server)
 
 ```bash
 git clone https://github.com/ajipal/ToneFit.git
@@ -84,91 +136,116 @@ cd ToneFit
 pip install -r requirements.txt
 ```
 
-**FaRL pretrained weights** (download once, place in `models/`):
+**FaRL pretrained weights** (~652 MB, place in `models/`):
 ```bash
-# ~622 MB — FaRL ViT-Base trained on LAION-Face for 64 epochs
 wget https://github.com/FacePerceiver/FaRL/releases/download/pretrained_weights/FaRL-Base-Patch16-LAIONFace20M-ep64.pth -O models/farl_weights.pth
 ```
 
----
+### Next.js frontend
 
-## Usage
-
-### Step 1 — Preprocess dataset
 ```bash
-python preprocess.py
-```
-Outputs: `features.csv`, `data_split.csv`
-
-### Step 2 — Train models (Colab with T4 GPU recommended)
-```bash
-python train_farl.py      # Model A — FaRL ViT-Base
-python train_dinov2.py    # Model B — DINOv2 ViT-B/14
+cd web
+npm install
 ```
 
-### Step 3 — Evaluate
-```bash
-python evaluate.py
+Create `web/.env.local`:
 ```
-Generates confusion matrices and comparison chart vs Deep Armocromia paper baselines.
-
-### Step 4 — Run the web app
-```bash
-streamlit run app.py
+PYTHON_API_URL=http://localhost:8000
 ```
 
 ---
 
-## Model Architecture
+## Running Locally
 
-Both models share the same classifier head following the Deep Armocromia paper:
-
-```
-Backbone (FaRL ViT-Base or DINOv2 ViT-B/14, feature_dim=768, frozen)
-  → Linear(768, 384) → ReLU → Dropout(0.5) → Linear(384, 4)
+**Terminal 1 — ML inference server:**
+```bash
+uvicorn server:app --host 0.0.0.0 --port 8000
 ```
 
-**Training settings:** AdamW (lr=1e-3, weight_decay=1e-5), CosineAnnealingWarmRestarts (T_0=10), 50 epochs, batch_size=64
+**Terminal 2 — Next.js frontend:**
+```bash
+cd web
+npm run dev
+```
+
+Open `http://localhost:3000`.
 
 ---
 
-## Paper Baselines (Deep Armocromia, Stacchio et al. 2024)
+## Training Pipeline (Google Colab)
 
-| Model | Accuracy | F1 (macro) |
-|-------|----------|------------|
-| FaRL16 | 0.525 | 0.519 |
-| FaRL64 | 0.554 | 0.548 |
-| ResNeXt50 | 0.513 | 0.502 |
+Open `ToneFit_Colab.ipynb` on Colab (T4 GPU recommended) and run cells in order:
 
-ToneFit ML evaluates FaRL64 and DINOv2 against these baselines.
+| Step | Description |
+|------|-------------|
+| 0 | Check GPU |
+| 1 | Mount Google Drive |
+| 2 | Clone repo + install dependencies |
+| 3 | Link RGB-M dataset from Drive |
+| 4–5 | Preprocessing + EDA |
+| 6 | Train Model A + Model B |
+| 7 | Train Hierarchical model |
+| 8 | Compare all models (`evaluate.py`) |
+| 9 | Save results + download zip |
 
 ---
 
 ## Tech Stack
 
-| Category | Tools |
-|----------|-------|
-| Language | Python 3.10+ |
-| Deep Learning | PyTorch, timm (FaRL), torch.hub (DINOv2) |
-| Image Processing | OpenCV |
-| Color Analysis | scikit-image (CIELab), NumPy |
-| Data | Pandas, NumPy |
+| Layer | Tools |
+|-------|-------|
+| ML Framework | PyTorch, timm |
+| Backbone | FaRL-64 (CLIP ViT-B/16, face-pretrained) |
+| Image Processing | Pillow, OpenCV, torchvision |
+| Data / Metrics | NumPy, scikit-learn, pandas |
 | Visualization | Matplotlib, Seaborn |
-| Web App | Streamlit |
+| ML API Server | FastAPI, Uvicorn |
+| Frontend | Next.js 15, React 19, Tailwind CSS, TypeScript |
+| Deployment | Vercel (frontend) + Railway/Render (Python server) |
+| Training | Google Colab (T4 GPU) |
+
+---
+
+## Architecture Diagram
+
+```
+User photo (browser)
+      │
+      ▼
+Next.js /api/analyze          ← Vercel
+      │  POST /predict
+      ▼
+FastAPI server.py             ← Railway / Render
+  FaRLBackbone (frozen)
+      │  768-d features
+      ▼
+  HierarchicalArmocromiaHead
+  ├── Stage 1: FC(384→4)  → season logits
+  └── Stage 2: FC(388→12) → subtype logits (conditioned on Stage 1 softmax)
+      │
+      ▼
+{ season, subtype, confidence, top3 }
+      │
+      ▼
+Results page (color palette, clothes, makeup)
+```
+
+---
+
+## Paper Baselines
+
+Stacchio, L., Paolanti, M., Spigarelli, F., & Frontoni, E. (2025). Deep Armocromia: A novel dataset for face seasonal color analysis and classification. *ECCV 2024 Workshops* (pp. 352–367). Springer. https://doi.org/10.1007/978-3-031-91569-7_22
 
 ---
 
 ## References
 
-- Stacchio, L., Paolanti, M., Spigarelli, F., & Frontoni, E. (2025). Deep Armocromia: A novel dataset for face seasonal color analysis and classification. In *Computer Vision – ECCV 2024 Workshops* (pp. 352–367). Springer Nature Switzerland. https://doi.org/10.1007/978-3-031-91569-7_22
 - Wang, W., et al. (2022). FaRL: General facial representation learning in a frozen state. *CVPR 2022*.
-- Oquab, M., et al. (2023). DINOv2: Learning robust visual features without supervision. *Meta AI*. arXiv:2304.07193
-- Zhao, et al. (2025). Fine-grained facial classification with self-supervised transformers.
-- Kye & Lee (2022). Skin color classification of Koreans using clustering. PMC9907718.
+- Stacchio et al. (2024). Deep Armocromia dataset. *ECCV 2024 Workshops*.
 
 ---
 
 ## Team
 
-Polytechnic University of the Philippines — Data Science / Current Trends in IT Course
-Group of 4 students, 2025
+Polytechnic University of the Philippines — Data Science / Current Trends in IT  
+Group study, 2025–2026

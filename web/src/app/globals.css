@@ -1,3 +1,33 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer utilities {
+  .season-panel-spring {
+    background: linear-gradient(180deg, #f5c4a8 0%, #e8956e 45%, #d4704a 100%);
+  }
+  .season-panel-summer {
+    background: linear-gradient(180deg, #c8d8ea 0%, #9ab4cc 45%, #7094aa 100%);
+  }
+  .season-panel-autumn {
+    background: linear-gradient(180deg, #d9a86a 0%, #b07838 45%, #7a4c18 100%);
+  }
+  .season-panel-winter {
+    background: linear-gradient(180deg, #2a3a60 0%, #161e3a 45%, #08101e 100%);
+  }
+}

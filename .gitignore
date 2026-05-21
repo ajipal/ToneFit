@@ -29,5 +29,12 @@ Thumbs.db
 
 # Environment
 .env
+.env.local
 venv/
 .venv/
+
+# Next.js
+web/.next/
+web/node_modules/
+web/next-env.d.ts
+web/tsconfig.tsbuildinfo
