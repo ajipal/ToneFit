@@ -15,7 +15,11 @@
       "Bash(pip install *)",
       "Bash(uvicorn --version)",
       "Bash(python -c \"import uvicorn; print\\(uvicorn.__file__\\)\")",
-      "Bash(\"C:\\\\Users\\\\ronco\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python310\\\\python.exe\" -m pip install scikit-image)"
+      "Bash(\"C:\\\\Users\\\\ronco\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python310\\\\python.exe\" -m pip install scikit-image)",
+      "mcp__claude_ai_Figma__get_design_context",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)"
     ],
     "additionalDirectories": [
       "\\tmp",
