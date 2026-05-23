@@ -30,6 +30,9 @@ Thumbs.db
 # Environment
 .env
 .env.local
+
+# Claude Code local settings (machine-specific)
+.claude/settings.local.json
 venv/
 .venv/
 
