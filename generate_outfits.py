@@ -3,6 +3,9 @@ ToneFit ML — Gemini Outfit Image Generator
 Generates 72 outfit images (12 sub-types × 6 styles)
 using Google Gemini Imagen API.
 
+Outfits are unisex / gender-neutral — no age or gender personalization.
+Color palette accuracy is the sole personalization axis (personal color season).
+
 Requirements:
     pip install google-generativeai pillow
 
@@ -27,22 +30,23 @@ genai.configure(api_key=GEMINI_API_KEY)
 # ── LAYOUT DESCRIPTION (based on your reference photo) ────────
 # Change this to match whatever reference photo you use
 LAYOUT = (
-    "Fashion outfit flat lay on a clean white background. "
-    "Clothes are neatly arranged: top folded at the upper area, "
-    "bottom folded below it, shoes placed at the bottom, "
-    "and a bag on the side. Minimal, editorial, clean styling. "
+    "Unisex fashion outfit flat lay on a clean white background. "
+    "Gender-neutral, age-agnostic clothing items neatly arranged: "
+    "top folded at the upper area, bottom folded below it, "
+    "shoes placed at the bottom, and a bag on the side. "
+    "Minimal, editorial, clean styling. "
     "No person, no face, no model. Soft studio lighting. "
     "High quality fashion photography style."
 )
 
 # ── STYLE DESCRIPTIONS ────────────────────────────────────────
 STYLE_DESC = {
-    "casual":       "casual everyday wear — relaxed, comfortable, and effortless",
-    "smart_casual": "smart casual — polished but relaxed, between casual and formal",
-    "classic":      "classic timeless style — elegant, structured, and refined",
-    "streetwear":   "streetwear — urban, trendy, bold, and youthful",
-    "retro":        "retro vintage style — nostalgic, playful, and characterful",
-    "formal":       "formal occasion wear — sophisticated, elegant, and polished",
+    "casual":       "unisex casual everyday wear — relaxed, comfortable, and effortless",
+    "smart_casual": "unisex smart casual — polished but relaxed, between casual and formal",
+    "classic":      "unisex classic timeless style — elegant, structured, and refined",
+    "streetwear":   "unisex streetwear — urban, trendy, bold, and contemporary",
+    "retro":        "unisex retro vintage style — nostalgic, playful, and characterful",
+    "formal":       "unisex formal occasion wear — sophisticated, elegant, and polished",
 }
 
 # ── ALL 12 SUB-TYPES WITH THEIR BEST COLORS ───────────────────

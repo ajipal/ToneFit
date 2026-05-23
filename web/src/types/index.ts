@@ -16,9 +16,5 @@ export interface PredictionResult {
 
 export interface UserProfile {
   name: string;
-  gender: string;
-  style: string[];
-  age_range: string;
-  budget: string;
-  makeup: string;
+  style: string;
 }

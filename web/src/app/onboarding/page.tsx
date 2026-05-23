@@ -6,14 +6,13 @@ import Nav from "@/components/Nav";
 import FaceCapture from "@/components/FaceCapture";
 
 /* ── Step / photo-mode types ─────────────────────────────── */
-type Step = "name" | "style" | "age" | "photo";
+type Step = "name" | "style" | "photo";
 type PhotoMode = "select" | "camera" | "upload";
 type CameraError = "permission" | "no-camera" | "unknown" | null;
-const STEPS: Step[] = ["name", "style", "age", "photo"];
+const STEPS: Step[] = ["name", "style", "photo"];
 const STEP_LABELS: Record<Step, string> = {
   name: "Name",
   style: "Style",
-  age: "Age",
   photo: "Photo",
 };
 
@@ -25,8 +24,6 @@ const STYLE_OPTIONS = [
   { id: "classic", label: "Classic", subtitle: "Timeless elegance", icon: <ClassicIcon /> },
   { id: "formal", label: "Formal", subtitle: "Professional attire", icon: <TieIcon /> },
 ];
-
-const AGE_OPTIONS = ["Under 18", "18-24", "25-34", "35-44", "45+"];
 
 /* ── Icon components ─────────────────────────────────────── */
 function ShirtIcon() {
@@ -169,7 +166,6 @@ function OnboardingInner() {
 
   const [name, setName] = useState("");
   const [style, setStyle] = useState<string>("");
-  const [age, setAge] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -187,10 +183,9 @@ function OnboardingInner() {
           const profile = JSON.parse(saved);
           if (profile.name)  setName(profile.name);
           if (profile.style) setStyle(Array.isArray(profile.style) ? profile.style[0] ?? "" : profile.style);
-          if (profile.age)   setAge(profile.age);
         }
       } catch {}
-      setCompleted(new Set<Step>(["name", "style", "age"]));
+      setCompleted(new Set<Step>(["name", "style"]));
       setStep("photo");
     }
   }, [searchParams]);
@@ -239,7 +234,7 @@ function OnboardingInner() {
       // proceed
     }
 
-    localStorage.setItem("tonefit_profile", JSON.stringify({ name, style, age }));
+    localStorage.setItem("tonefit_profile", JSON.stringify({ name, style }));
 
     const base64 = await resizeAndEncode(photo);
     sessionStorage.setItem("tonefit_photo", base64);
@@ -318,7 +313,7 @@ function OnboardingInner() {
               </div>
               <div className="flex justify-center">
                 <button
-                  onClick={() => advance("style", "age")}
+                  onClick={() => advance("style", "photo")}
                   disabled={!style}
                   className="flex items-center gap-2 px-8 py-4 bg-black text-white rounded-xl font-semibold text-base hover:bg-neutral-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
@@ -328,34 +323,7 @@ function OnboardingInner() {
             </div>
           )}
 
-          {/* ── Step 3: Age ────────────────────────────── */}
-          {step === "age" && (
-            <div className="w-full max-w-sm flex flex-col items-center gap-8">
-              <h1 className="text-[40px] font-black leading-tight tracking-tight text-center">
-                How old are you?
-              </h1>
-              <div className="w-full flex flex-col gap-3">
-                {AGE_OPTIONS.map((opt) => (
-                  <button
-                    key={opt}
-                    onClick={() => {
-                      setAge(opt);
-                      advance("age", "photo");
-                    }}
-                    className={`w-full py-4 rounded-xl border-2 text-base font-semibold transition-all ${
-                      age === opt
-                        ? "border-black bg-black text-white"
-                        : "border-black/10 hover:border-black/30 text-black"
-                    }`}
-                  >
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── Step 4: Photo ──────────────────────────── */}
+          {/* ── Step 3: Photo ──────────────────────────── */}
           {step === "photo" && (
             <div className="w-full max-w-xs flex flex-col items-center gap-5">
               <div className="text-center">
