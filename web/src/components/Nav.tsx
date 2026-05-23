@@ -37,6 +37,12 @@ export default function Nav({ variant = "light", showFullLinks = true }: NavProp
             How It Works
           </Link>
           <Link
+            href="/compare"
+            className={`text-[15px] font-medium hover:opacity-60 transition-opacity ${isDark ? "text-white/80" : "text-neutral-600"}`}
+          >
+            Model Comparison
+          </Link>
+          <Link
             href="/onboarding"
             className={`px-6 py-3 rounded-xl text-[15px] font-semibold transition-all ${
               isDark
