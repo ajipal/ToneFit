@@ -1,95 +1,85 @@
 import Link from "next/link";
 import Nav from "@/components/Nav";
 
-const SEASON_PANELS = [
-  { name: "Spring", className: "season-panel-spring", textColor: "text-amber-900" },
-  { name: "Summer", className: "season-panel-summer", textColor: "text-sky-900" },
-  { name: "Autumn", className: "season-panel-autumn", textColor: "text-amber-950" },
-  { name: "Winter", className: "season-panel-winter", textColor: "text-white" },
-];
-
-const HOW_IT_WORKS = [
+const SEASONS = [
   {
-    step: "Step 1",
-    icon: (
-      <svg viewBox="0 0 40 40" fill="none" className="w-10 h-10" stroke="currentColor" strokeWidth="1.8">
-        <circle cx="20" cy="15" r="8" />
-        <path d="M5 38c0-8.284 6.716-15 15-15s15 6.716 15 15" strokeLinecap="round" />
-      </svg>
-    ),
-    title: "Take or Upload a Photo",
-    description:
-      "Use your camera or upload a clear face photo. Make sure you have good lighting and face the camera directly for the most accurate results.",
+    name: "Spring", cls: "season-spring",
+    // warm: golden yellow, hot coral, soft peach, deep amber
+    blobs: ["#FFD700", "#FF4D6D", "#FFAA5E", "#FF6B00"],
+    delays: ["0s", "-3.5s", "-6s", "-1.5s"],
   },
   {
-    step: "Step 2",
-    icon: (
-      <svg viewBox="0 0 40 40" fill="none" className="w-10 h-10" stroke="currentColor" strokeWidth="1.8">
-        <circle cx="20" cy="20" r="16" />
-        <path d="M20 8v4M20 28v4M8 20h4M28 20h4" strokeLinecap="round" />
-        <circle cx="20" cy="20" r="6" />
-      </svg>
-    ),
-    title: "AI Analyzes Your Features",
-    description:
-      "Our model analyzes your skin tone, undertone, and contrast to classify your personal color season from 12 possible sub-types.",
+    name: "Summer", cls: "season-summer",
+    // cool muted: soft lavender, dusty rose, powder blue, lilac
+    blobs: ["#C5B3F0", "#F4A8C7", "#7EC8E3", "#A78BFA"],
+    delays: ["-2s", "-5s", "-1s", "-8s"],
   },
   {
-    step: "Step 3",
-    icon: (
-      <svg viewBox="0 0 40 40" fill="none" className="w-10 h-10" stroke="currentColor" strokeWidth="1.8">
-        <rect x="6" y="8" width="28" height="28" rx="4" />
-        <path d="M13 20l5 5 9-9" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-    title: "Get Your Full Style Guide",
-    description:
-      "Receive your season, color palette, outfit recommendations, accessories, and makeup tips — all tailored to your personal color season.",
+    name: "Autumn", cls: "season-autumn",
+    // earthy warm: golden, burnt orange, deep rust, olive amber
+    blobs: ["#E1AD01", "#CC4400", "#8B1A00", "#C8860A"],
+    delays: ["-1s", "-4s", "-7s", "-2.5s"],
+  },
+  {
+    name: "Winter", cls: "season-winter",
+    // cool deep: aurora teal, violet, icy blue, deep purple
+    blobs: ["#00C9A7", "#7C3AED", "#38BDF8", "#9B1D6E"],
+    delays: ["-3s", "-6s", "-2s", "-9s"],
   },
 ];
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-white text-black">
+    <div className="min-h-screen bg-[#fafaf8] text-[#141412] pt-[88px]">
       <Nav />
 
       {/* ── Hero ─────────────────────────────────────────── */}
-      <section className="flex h-[calc(100vh-88px)] min-h-[640px] overflow-hidden">
+      <section className="flex items-start px-[58.5px] pt-[56px] bg-[#fafaf8] overflow-hidden min-h-[700px]">
         {/* Left — text + CTAs */}
-        <div className="flex flex-col justify-center px-14 flex-1 max-w-[640px] gap-0">
-          <p className="text-sm font-semibold tracking-widest uppercase text-neutral-500 mb-6">
+        <div className="flex flex-col flex-1 min-w-0 mt-[24px] max-w-[566px]">
+          <p className="text-[13.4px] font-medium tracking-[2.4px] uppercase text-[#a8a59e] mb-[29px]">
             AI-Powered Personal Color Analysis
           </p>
-          <h1 className="text-[64px] font-black leading-[1.05] tracking-tight text-black mb-8">
-            Discover Your Perfect Color Season
+          <h1 className="font-display text-[82px] leading-[1.05] text-[#141412] mb-[29px]">
+            Discover your perfect color season
           </h1>
-          <p className="text-lg leading-relaxed text-neutral-600 max-w-[460px] mb-10">
+          <p className="text-[19.5px] leading-[1.65] text-[#a8a59e] max-w-[463px] mb-[29px]">
             Our AI analyzes your skin tone, undertone, and contrast to reveal your personal color
-            season and give you a complete, personalized style guide.
+            season and the palette that makes you glow.
           </p>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-[14.6px] pt-[9.75px]">
             <Link
               href="/onboarding"
-              className="px-8 py-4 bg-black text-white rounded-xl font-semibold text-[15px] hover:bg-neutral-800 transition-colors"
+              className="bg-[#1a1a1a] text-white px-[29px] h-[53.6px] rounded-full flex items-center font-medium text-[17px] hover:bg-neutral-800 transition-colors whitespace-nowrap"
             >
               Discover It Now
             </Link>
             <a
               href="#how-it-works"
-              className="px-8 py-4 border border-black/20 rounded-xl font-semibold text-[15px] text-neutral-700 hover:bg-neutral-50 transition-colors"
+              className="border border-black/[0.09] text-[#141412] px-[30px] h-[53.6px] rounded-full flex items-center font-medium text-[17px] hover:bg-black/5 transition-colors whitespace-nowrap"
             >
               How it Works
             </a>
           </div>
         </div>
 
-        {/* Right — 4 season panels */}
-        <div className="flex flex-1">
-          {SEASON_PANELS.map((s) => (
-            <div key={s.name} className={`flex-1 relative ${s.className}`}>
-              <span
-                className={`absolute bottom-6 left-5 text-base font-semibold tracking-wide ${s.textColor}`}
-              >
+        {/* Right — 4 season gradient cards */}
+        <div className="flex gap-[10px] flex-shrink-0 mt-0 ml-auto">
+          {SEASONS.map((s) => (
+            <div
+              key={s.name}
+              className={`relative rounded-[19.5px] overflow-hidden flex-shrink-0 ${s.cls}`}
+              style={{ width: "165.8px", height: "520px" }}
+            >
+              {/* top-left */}
+              <div className="season-blob blob-a" style={{ width: "210px", height: "210px", background: s.blobs[0], top: "-10%",  left: "-25%", animationDelay: s.delays[0] }} />
+              {/* bottom-right */}
+              <div className="season-blob blob-b" style={{ width: "200px", height: "200px", background: s.blobs[1], bottom: "-8%", right: "-30%", animationDelay: s.delays[1] }} />
+              {/* center */}
+              <div className="season-blob blob-c" style={{ width: "180px", height: "180px", background: s.blobs[2], top: "30%",  left: "-10%", animationDelay: s.delays[2] }} />
+              {/* top-right */}
+              <div className="season-blob blob-d" style={{ width: "160px", height: "160px", background: s.blobs[3], top: "5%",   right: "-20%", animationDelay: s.delays[3] }} />
+              <span className="absolute bottom-[19.5px] left-[19.5px] text-[14.6px] font-semibold text-white z-10">
                 {s.name}
               </span>
             </div>
@@ -97,99 +87,148 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Feature highlight ─────────────────────────────── */}
-      <section id="about" className="flex min-h-[640px] border-t border-black/8">
-        {/* Left — two stacked info blocks */}
-        <div className="flex-1 flex flex-col border-r border-black/8">
-          <div className="flex-1 p-14 border-b border-black/8 flex flex-col justify-center">
-            <span className="text-xs font-bold tracking-widest uppercase text-neutral-400 mb-4">
-              01
-            </span>
-            <h2 className="text-3xl font-black leading-tight mb-4">
-              What Is Personal Color Analysis?
-            </h2>
-            <p className="text-base leading-relaxed text-neutral-600">
-              Personal color analysis (Armocromia) identifies which seasonal color palette —
-              Spring, Summer, Autumn, or Winter — best harmonizes with your natural skin tone,
-              hair, and eye color. Wearing your season&apos;s colors makes you look more vibrant,
-              healthier, and effortlessly put-together.
-            </p>
-          </div>
-          <div className="flex-1 p-14 flex flex-col justify-center">
-            <span className="text-xs font-bold tracking-widest uppercase text-neutral-400 mb-4">
-              02
-            </span>
-            <h2 className="text-3xl font-black leading-tight mb-4">
-              12 Sub-Types for Precision
-            </h2>
-            <p className="text-base leading-relaxed text-neutral-600">
-              ToneFit goes beyond 4 seasons. We classify you into one of 12 sub-types —
-              like Deep Autumn or Bright Winter — for a more nuanced, accurate color
-              profile tailored specifically to your unique coloring.
-            </p>
-          </div>
-        </div>
+      {/* ── About ────────────────────────────────────────── */}
+      <section id="about" className="px-[59px] py-[72px] bg-[#fafaf8] flex items-center">
+        <div className="flex gap-[18px] w-full">
 
-        {/* Right — visual card */}
-        <div className="flex-1 p-14 flex items-center justify-center bg-neutral-50">
-          <div className="w-full max-w-md rounded-3xl overflow-hidden shadow-xl aspect-[4/5] bg-gradient-to-br from-neutral-100 to-neutral-200 flex flex-col items-center justify-center gap-4 text-neutral-400">
-            <svg viewBox="0 0 80 80" fill="none" className="w-16 h-16" stroke="currentColor" strokeWidth="1.5">
-              <circle cx="40" cy="30" r="14" />
-              <path d="M12 72c0-15.464 12.536-28 28-28s28 12.536 28 28" strokeLinecap="round" />
-            </svg>
-            <p className="text-sm font-medium">Your result preview</p>
+          {/* Left column — two stacked dark cards */}
+          <div className="flex flex-col gap-[18px] flex-shrink-0" style={{ width: "658px" }}>
+            {/* Card 1 — What is Color Analysis? */}
+            <div
+              className="bg-[#141412] rounded-[29px] overflow-hidden relative flex-shrink-0"
+              style={{ height: "329px" }}
+            >
+              <h2 className="font-display italic text-[50px] leading-[97.5px] text-white/60 text-center absolute top-[30px] left-1/2 -translate-x-1/2 whitespace-nowrap">
+                What is Color Analysis?
+              </h2>
+              <p className="absolute text-[17px] leading-[28.2px] text-white/45 text-justify" style={{ top: "130px", left: "78px", width: "502px" }}>
+                Color analysis — also known as personal color analysis or armocromia — is a method
+                of identifying which colors naturally complement your unique skin tone, undertone,
+                and contrast level (Caygill, 1980; Jackson, 1980). The result is your color season:
+                a personal color profile that tells you which shades make you look your most vibrant
+                and put-together.
+              </p>
+            </div>
+
+            {/* Card 2 — Why It Matters */}
+            <div
+              className="bg-[#141412] rounded-[29px] overflow-hidden relative flex-shrink-0"
+              style={{ height: "263px" }}
+            >
+              <h2 className="font-display italic text-[50px] leading-[97.5px] text-white/60 text-center absolute top-[16px] left-1/2 -translate-x-1/2 whitespace-nowrap">
+                Why It Matters
+              </h2>
+              <p className="absolute text-[17px] leading-[28.2px] text-white/45 text-justify" style={{ top: "116px", left: "78.5px", width: "502px" }}>
+                Wearing your best colors can make your skin look clearer, your eyes appear brighter,
+                and your overall look more harmonious — without changing anything else about yourself.
+              </p>
+            </div>
+          </div>
+
+          {/* Right column — About the Color Seasons */}
+          <div
+            className="bg-[#141412] rounded-[29px] overflow-hidden flex-1 flex-shrink-0 flex flex-col items-center justify-center px-[69px] py-[48px]"
+            style={{ height: "610px" }}
+          >
+            <h2 className="font-display italic text-[50px] leading-[55px] text-white/60 text-center mb-[40px] max-w-[302px]">
+              About the Color Seasons
+            </h2>
+            <div className="text-[17px] leading-[28.2px] text-white/45 text-justify space-y-[28px] max-w-[448px]">
+              <p>
+                The color seasons have nothing to do with weather or the time of year. They are named
+                after the four seasons of nature because each group shares visual qualities — warmth,
+                coolness, brightness, or depth — that mirror what we see in spring blooms, summer
+                haze, autumn leaves, and winter frost (Jackson, 1980; Kentner, 1985). Your color
+                season is determined by your natural coloring, not the calendar.
+              </p>
+              <p>
+                ToneFit uses a 12-season model, which expands the original four seasons into
+                sub-groups for a more precise result (Findlay, 2012; Stacchio et al., 2024).
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
       {/* ── How it Works ─────────────────────────────────── */}
-      <section id="how-it-works" className="border-t border-black/8 py-24 px-14">
-        <div className="max-w-5xl mx-auto">
-          <p className="text-xs font-bold tracking-widest uppercase text-neutral-400 mb-4 text-center">
-            How it Works
+      <section id="how-it-works" className="px-[58.5px] py-[72px] bg-[#fafaf8] flex flex-col justify-center">
+        {/* Section header */}
+        <div className="text-center mb-[48px]">
+          <p className="text-[13.4px] font-medium tracking-[2.4px] uppercase text-[#a8a59e] mb-4">
+            How It Works
           </p>
-          <h2 className="text-[42px] font-black text-center mb-16 tracking-tight">
+          <h2 className="font-display text-[42px] leading-tight text-[#141412]">
             Three steps to your season
           </h2>
+        </div>
 
-          <div className="grid grid-cols-3 gap-8">
-            {HOW_IT_WORKS.map((item) => (
-              <div key={item.step} className="flex flex-col items-center text-center gap-6">
-                {/* Step number */}
-                <div className="w-full flex justify-center">
-                  <span className="text-xs font-bold tracking-widest uppercase text-neutral-400">
-                    {item.step}
-                  </span>
-                </div>
+        <div className="grid grid-cols-3" style={{ gap: "18px" }}>
 
-                {/* Icon circle */}
-                <div className="w-24 h-24 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-600">
-                  {item.icon}
-                </div>
-
-                {/* Text */}
-                <div>
-                  <h3 className="text-xl font-bold mb-3">{item.title}</h3>
-                  <p className="text-sm leading-relaxed text-neutral-600">{item.description}</p>
-                </div>
-              </div>
-            ))}
+          {/* Step 1 */}
+          <div className="bg-white rounded-[29px] shadow-[0px_4px_24px_rgba(0,0,0,0.07)] px-[48px] pt-[48px] pb-[48px] flex flex-col items-center text-center">
+            <p className="text-[12px] font-medium tracking-[2px] uppercase text-[#a8a59e] mb-5">Step 1</p>
+            <div className="border border-black/10 bg-neutral-50 rounded-full flex items-center justify-center mb-6" style={{ width: "88px", height: "88px" }}>
+              <svg className="w-9 h-9 text-[#141412]/40" fill="none" viewBox="0 0 40 40" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="34" height="23" rx="4" />
+                <circle cx="20" cy="22.5" r="6" />
+                <path d="M13.5 11 16 7h8l2.5 4" />
+              </svg>
+            </div>
+            <h3 className="text-[18px] font-bold text-[#141412] mb-3">Take or Upload a Photo</h3>
+            <p className="text-[15px] leading-[26px] text-neutral-500">
+              Use your camera or upload a clear face photo. Make sure you have good lighting and face
+              the camera directly for the most accurate results.
+            </p>
           </div>
 
-          <div className="flex justify-center mt-16">
-            <Link
-              href="/onboarding"
-              className="px-10 py-4 bg-black text-white rounded-xl font-semibold text-base hover:bg-neutral-800 transition-colors"
-            >
-              Discover Your Color Palette
-            </Link>
+          {/* Step 2 */}
+          <div className="bg-white rounded-[29px] shadow-[0px_4px_24px_rgba(0,0,0,0.07)] px-[48px] pt-[48px] pb-[48px] flex flex-col items-center text-center">
+            <p className="text-[12px] font-medium tracking-[2px] uppercase text-[#a8a59e] mb-5">Step 2</p>
+            <div className="border border-black/10 bg-neutral-50 rounded-full flex items-center justify-center mb-6" style={{ width: "88px", height: "88px" }}>
+              <svg className="w-9 h-9 text-[#141412]/40" fill="none" viewBox="0 0 40 40" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 5 l2.8 9.5 9.5 2.8-9.5 2.8L20 30l-2.8-9.9L7.7 17.6l9.5-2.8z" />
+                <path d="M32 26l1.5 4.5L38 32l-4.5 1.5L32 38l-1.5-4.5L26 32l4.5-1.5z" />
+              </svg>
+            </div>
+            <h3 className="text-[18px] font-bold text-[#141412] mb-3">AI Analyzes Your Features</h3>
+            <p className="text-[15px] leading-[26px] text-neutral-500">
+              Our model analyzes your skin tone, undertone, and contrast to classify your personal
+              color season from 12 possible sub-types.
+            </p>
           </div>
+
+          {/* Step 3 */}
+          <div className="bg-white rounded-[29px] shadow-[0px_4px_24px_rgba(0,0,0,0.07)] px-[48px] pt-[48px] pb-[48px] flex flex-col items-center text-center">
+            <p className="text-[12px] font-medium tracking-[2px] uppercase text-[#a8a59e] mb-5">Step 3</p>
+            <div className="border border-black/10 bg-neutral-50 rounded-full flex items-center justify-center mb-6" style={{ width: "88px", height: "88px" }}>
+              <svg className="w-9 h-9 text-[#141412]/40" fill="none" viewBox="0 0 40 40" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="6" y="8" width="28" height="28" rx="4" />
+                <path d="M13 22l5 5 9-9" />
+              </svg>
+            </div>
+            <h3 className="text-[18px] font-bold text-[#141412] mb-3">Get Your Full Style Guide</h3>
+            <p className="text-[15px] leading-[26px] text-neutral-500">
+              Receive your season, color palette, outfit recommendations, accessories, and makeup
+              tips — all tailored to your personal color season.
+            </p>
+          </div>
+
+        </div>
+
+        {/* CTA */}
+        <div className="flex justify-center mt-[48px]">
+          <Link
+            href="/onboarding"
+            className="bg-[#1a1a1a] text-white px-[40px] h-[53.6px] rounded-full flex items-center font-medium text-[17px] hover:bg-neutral-800 transition-colors whitespace-nowrap"
+          >
+            Discover Your Color Palette
+          </Link>
         </div>
       </section>
 
       {/* ── Footer ───────────────────────────────────────── */}
-      <footer className="border-t border-black/8 px-14 py-8 flex items-center justify-between text-sm text-neutral-400">
-        <span className="font-semibold text-black">ToneFit AI</span>
+      <footer className="border-t border-black/8 px-[58.5px] py-8 flex items-center justify-between text-sm text-neutral-400">
+        <span className="font-semibold text-[#141412]">ToneFit AI</span>
         <span>PUP Manila · Data Science Pilot Study · 2026</span>
       </footer>
     </div>

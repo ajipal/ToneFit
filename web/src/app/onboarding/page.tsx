@@ -168,7 +168,7 @@ function OnboardingInner() {
   const [completed, setCompleted] = useState<Set<Step>>(new Set());
 
   const [name, setName] = useState("");
-  const [style, setStyle] = useState<string[]>([]);
+  const [style, setStyle] = useState<string>("");
   const [age, setAge] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -186,7 +186,7 @@ function OnboardingInner() {
         if (saved) {
           const profile = JSON.parse(saved);
           if (profile.name)  setName(profile.name);
-          if (profile.style) setStyle(profile.style);
+          if (profile.style) setStyle(Array.isArray(profile.style) ? profile.style[0] ?? "" : profile.style);
           if (profile.age)   setAge(profile.age);
         }
       } catch {}
@@ -292,17 +292,11 @@ function OnboardingInner() {
               </h1>
               <div className="grid grid-cols-2 gap-4">
                 {STYLE_OPTIONS.map((opt) => {
-                  const selected = style.includes(opt.id);
+                  const selected = style === opt.id;
                   return (
                     <button
                       key={opt.id}
-                      onClick={() =>
-                        setStyle((prev) =>
-                          prev.includes(opt.id)
-                            ? prev.filter((s) => s !== opt.id)
-                            : [...prev, opt.id]
-                        )
-                      }
+                      onClick={() => setStyle(opt.id)}
                       className={`flex items-center gap-4 p-6 rounded-2xl border-2 text-left transition-all ${
                         selected
                           ? "border-black bg-black text-white"
@@ -325,7 +319,7 @@ function OnboardingInner() {
               <div className="flex justify-center">
                 <button
                   onClick={() => advance("style", "age")}
-                  disabled={style.length === 0}
+                  disabled={!style}
                   className="flex items-center gap-2 px-8 py-4 bg-black text-white rounded-xl font-semibold text-base hover:bg-neutral-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   Next <ArrowIcon />

@@ -2,6 +2,7 @@
 
 @theme {
   --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-serif: var(--font-dm-serif), Georgia, serif;
 
   --color-spring: #E8856A;
   --color-spring-light: #FDDECA;
@@ -36,6 +37,14 @@
 }
 
 @layer utilities {
+  .font-display {
+    font-family: var(--font-dm-serif), "DM Serif Display", Georgia, serif;
+  }
+
+  .font-cormorant {
+    font-family: var(--font-cormorant), "Cormorant", Georgia, serif;
+  }
+
   .season-panel-spring {
     background: linear-gradient(180deg, #f5c4a8 0%, #e8956e 45%, #d4704a 100%);
   }
@@ -48,4 +57,44 @@
   .season-panel-winter {
     background: linear-gradient(180deg, #2a3a60 0%, #161e3a 45%, #08101e 100%);
   }
+
+  @keyframes blobA {
+    0%, 100% { transform: translate(0%,   0%)   scale(1);    }
+    25%       { transform: translate(35%,  -40%) scale(1.15); }
+    50%       { transform: translate(-20%, 30%)  scale(0.9);  }
+    75%       { transform: translate(40%,  20%)  scale(1.05); }
+  }
+  @keyframes blobB {
+    0%, 100% { transform: translate(0%,   0%)   scale(1);    }
+    25%       { transform: translate(-40%, 35%)  scale(0.9);  }
+    50%       { transform: translate(25%,  -30%) scale(1.1);  }
+    75%       { transform: translate(-30%, -20%) scale(0.95); }
+  }
+  @keyframes blobC {
+    0%, 100% { transform: translate(0%,   0%)   scale(1);    }
+    33%       { transform: translate(25%,  45%)  scale(1.1);  }
+    66%       { transform: translate(-35%, -30%) scale(0.9);  }
+  }
+  @keyframes blobD {
+    0%, 100% { transform: translate(0%,   0%)   scale(1);    }
+    25%       { transform: translate(-25%, -35%) scale(1.1);  }
+    75%       { transform: translate(30%,  40%)  scale(0.9);  }
+  }
+
+  .season-blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(52px);
+    opacity: 0.9;
+  }
+  .blob-a { animation: blobA  9s ease-in-out infinite; }
+  .blob-b { animation: blobB 11s ease-in-out infinite; }
+  .blob-c { animation: blobC  7s ease-in-out infinite; }
+  .blob-d { animation: blobD 13s ease-in-out infinite; }
+
+  /* Season base colors */
+  .season-spring { background: #c44b00; }
+  .season-summer { background: #4a6fa5; }
+  .season-autumn { background: #5c2d00; }
+  .season-winter { background: #080e2a; }
 }
