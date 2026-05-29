@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: tonefit-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter       # $7/month — upgrade to standard ($25) for FaRL inference
+    healthCheckPath: /health
+    envVars:
+      - key: HF_REPO_ID
+        sync: false     # set this manually in Render dashboard
+      - key: HF_TOKEN
+        sync: false     # only needed if your HF repo is private
+      - key: PYTHONUNBUFFERED
+        value: "1"

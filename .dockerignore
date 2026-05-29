@@ -1,0 +1,13 @@
+RGB-M/
+archive/
+outfits/
+results/
+__pycache__/
+*.pyc
+.env
+.env.local
+node_modules/
+web/.next/
+web/node_modules/
+*.ipynb
+.git/

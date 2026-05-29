@@ -9,10 +9,18 @@ Endpoints:
 """
 
 import io
+import os
 import pickle
 import pathlib
 import warnings
 warnings.filterwarnings("ignore")
+
+# Download model files from HF Hub if needed (runs once at startup)
+try:
+    from download_models import download_models
+    download_models()
+except Exception as _dl_err:
+    print(f"[models] download_models skipped: {_dl_err}")
 
 import cv2
 import numpy as np
@@ -33,8 +41,8 @@ from pydantic import BaseModel
 # ─────────────────────────────────────────────
 #  Paths
 # ─────────────────────────────────────────────
-BASE_DIR   = pathlib.Path(__file__).parent.parent
-MODELS_DIR = BASE_DIR / "models"
+BASE_DIR   = pathlib.Path(__file__).resolve().parent.parent
+MODELS_DIR = pathlib.Path(os.environ.get("MODELS_DIR", str(BASE_DIR / "models")))
 HAAR_PATH  = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 
 FARL_HEAD_PATH    = MODELS_DIR / "farl_model.pth"
