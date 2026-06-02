@@ -37,7 +37,8 @@ export default function ProcessingPage() {
     function tryRedirect() {
       if (subtypeResult && animationComplete) {
         // Persist photo for results page display, then clear session
-        try { localStorage.setItem("tonefit_last_photo", photo); } catch {}
+        try { if (photo) localStorage.setItem("tonefit_last_photo", photo); } catch {}
+        try { localStorage.setItem("tonefit_last_season", subtypeResult); } catch {}
         sessionStorage.removeItem("tonefit_photo");
         router.push(`/results?season=${subtypeResult}`);
       }

@@ -41,3 +41,7 @@ web/.next/
 web/node_modules/
 web/next-env.d.ts
 web/tsconfig.tsbuildinfo
+
+# Outfit images — 225 MB, too large for git. Source: Google Drive outfits/ folder.
+# Folder structure is tracked via .gitkeep files; drop your images in locally.
+web/public/outfits/**/*.png
