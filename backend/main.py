@@ -270,8 +270,15 @@ def _load_svm():
         return None, None, str(exc)
 
 
-_farl_backbone, _farl_head, _farl_error = _load_farl()
-_svm_model, _scaler, _svm_error         = _load_svm()
+_skip_farl = os.environ.get("SKIP_FARL", "").lower() in ("1", "true", "yes")
+
+if _skip_farl:
+    print("[models] SKIP_FARL=true — skipping FaRL (SVM-only mode)")
+    _farl_backbone, _farl_head, _farl_error = None, None, "Disabled via SKIP_FARL env var"
+else:
+    _farl_backbone, _farl_head, _farl_error = _load_farl()
+
+_svm_model, _scaler, _svm_error = _load_svm()
 
 # ─────────────────────────────────────────────
 #  Face detection
