@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import Nav from "@/components/Nav";
 import { SEASON_DATA, type SeasonKey } from "@/lib/season-data";
 
@@ -45,18 +46,18 @@ const OUTFIT_IMAGES: Record<string, Partial<Record<string, string>>> = {
     winter_bright: "/outfits/classic/bright_winter_classic.png",
   },
   formal: {
-    spring_warm:   "/outfits/formal/outfitsspring_warmformal.png",
-    spring_light:  "/outfits/formal/outfitsspring_lightformal.png",
-    spring_bright: "/outfits/formal/outfitsspring_brightformal.png",
-    summer_cool:   "/outfits/formal/outfitssummer_coolformal.png",
-    summer_light:  "/outfits/formal/outfitssummer_lightformal.png",
-    summer_soft:   "/outfits/formal/outfitssummer_softformal.png",
-    autumn_warm:   "/outfits/formal/outfitsautumn_warmformal.png",
-    autumn_soft:   "/outfits/formal/outfitsautumn_softformal.png",
-    autumn_deep:   "/outfits/formal/outfitsautumn_deepformal.png",
-    winter_cool:   "/outfits/formal/outfitswinter_coolformal.png",
-    winter_deep:   "/outfits/formal/outfitswinter_deepformal.png",
-    winter_bright: "/outfits/formal/outfitswinter_brightformal.png",
+    spring_warm:   "/outfits/formal/warm_spring_formal.png",
+    spring_light:  "/outfits/formal/light_spring_formal.png",
+    spring_bright: "/outfits/formal/bright_spring_formal.png",
+    summer_cool:   "/outfits/formal/cool_summer_formal.png",
+    summer_light:  "/outfits/formal/light_summer_formal.png",
+    summer_soft:   "/outfits/formal/soft_summer_formal.png",
+    autumn_warm:   "/outfits/formal/warm_autumn_formal.png",
+    autumn_soft:   "/outfits/formal/soft_autumn_formal.png",
+    autumn_deep:   "/outfits/formal/deep_autumn_formal.png",
+    winter_cool:   "/outfits/formal/cool_winter_formal.png",
+    winter_deep:   "/outfits/formal/deep_winter_formal.png",
+    winter_bright: "/outfits/formal/bright_winter_formal.png",
   },
   retro: {
     spring_warm:   "/outfits/retro/outfitsspring_warmretro.png",
@@ -73,18 +74,18 @@ const OUTFIT_IMAGES: Record<string, Partial<Record<string, string>>> = {
     winter_bright: "/outfits/retro/outfitswinter_brightretro.png",
   },
   smart_casual: {
-    spring_warm:   "/outfits/smart casual/warm_spring_smart_casual.png",
-    spring_light:  "/outfits/smart casual/light_spring_smart_casual.png",
-    spring_bright: "/outfits/smart casual/bright_spring_smart_casual.png",
-    summer_cool:   "/outfits/smart casual/cool_summer_smart_casual.png",
-    summer_light:  "/outfits/smart casual/light_summer_smart_casual.png",
-    summer_soft:   "/outfits/smart casual/soft_summer_smart_casual.png",
-    autumn_warm:   "/outfits/smart casual/warm_autumn_smart_casual.png",
-    autumn_soft:   "/outfits/smart casual/soft_autumn_smart_casual.png",
-    autumn_deep:   "/outfits/smart casual/deep_autumn_smart_casual.png",
-    winter_cool:   "/outfits/smart casual/cool_winter_smart_casual.png",
-    winter_deep:   "/outfits/smart casual/deep_winter_smart_casual.png",
-    winter_bright: "/outfits/smart casual/bright_winter_smart_casual.png",
+    spring_warm:   "/outfits/smart_casual/warm_spring_smart_casual.png",
+    spring_light:  "/outfits/smart_casual/light_spring_smart_casual.png",
+    spring_bright: "/outfits/smart_casual/bright_spring_smart_casual.png",
+    summer_cool:   "/outfits/smart_casual/cool_summer_smart_casual.png",
+    summer_light:  "/outfits/smart_casual/light_summer_smart_casual.png",
+    summer_soft:   "/outfits/smart_casual/soft_summer_smart_casual.png",
+    autumn_warm:   "/outfits/smart_casual/warm_autumn_smart_casual.png",
+    autumn_soft:   "/outfits/smart_casual/soft_autumn_smart_casual.png",
+    autumn_deep:   "/outfits/smart_casual/deep_autumn_smart_casual.png",
+    winter_cool:   "/outfits/smart_casual/cool_winter_smart_casual.png",
+    winter_deep:   "/outfits/smart_casual/deep_winter_smart_casual.png",
+    winter_bright: "/outfits/smart_casual/bright_winter_smart_casual.png",
   },
   streetwear: {
     spring_warm:   "/outfits/streetwear/warm_spring_streetwear.png",
@@ -185,6 +186,7 @@ function ResultsInner() {
 
   const [userName, setUserName] = useState("friend");
   const [userStyle, setUserStyle] = useState("");
+  const [userPhoto, setUserPhoto] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("overview");
 
   useEffect(() => {
@@ -193,6 +195,10 @@ function ResultsInner() {
         const profile = JSON.parse(localStorage.getItem("tonefit_profile") ?? "{}");
         if (profile.name)  setUserName(profile.name);
         if (profile.style) setUserStyle(profile.style);
+      } catch { /* no-op */ }
+      try {
+        const photo = localStorage.getItem("tonefit_last_photo");
+        if (photo) setUserPhoto(photo);
       } catch { /* no-op */ }
     }
   }, []);
@@ -284,19 +290,52 @@ function ResultsInner() {
                   {data.description}
                 </p>
               </div>
+              <div style={{ display: "flex", gap: "12px", marginTop: "32px", flexWrap: "wrap" }}>
+                <Link
+                  href={`/analysis?season=${seasonKey}`}
+                  style={{
+                    padding: "12px 24px",
+                    background: "#111",
+                    color: "#fff",
+                    borderRadius: "12px",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    textDecoration: "none",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Get a more detailed analysis
+                </Link>
+                <Link
+                  href="/onboarding?step=photo"
+                  style={{
+                    padding: "12px 24px",
+                    background: "transparent",
+                    color: "#111",
+                    border: "1.5px solid #d0d0d0",
+                    borderRadius: "12px",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    textDecoration: "none",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Try another photo
+                </Link>
+              </div>
             </div>
 
-            {/* Right */}
+            {/* Right — user's input photo */}
             <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {outfitSrc ? (
+              {userPhoto ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={outfitSrc}
-                  alt={`${data.displayName} ${userStyle} outfit`}
+                  src={userPhoto}
+                  alt="Your photo"
                   style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: "20px" }}
                 />
               ) : (
-                <PlaceholderCard label="Outfit photo" />
+                <PlaceholderCard label="Your photo" />
               )}
             </div>
           </div>
