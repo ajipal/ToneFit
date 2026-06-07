@@ -70,19 +70,6 @@ const FARL_VAL_ACC   = [0.5285,0.5482,0.5428,0.5581,0.5285,0.5636,0.5471,0.5482,
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
-function MetricBar({ value, max = 1, color }: { value: number; max?: number; color: string }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-      <div style={{ flex: 1, height: "6px", background: "#f0f0f0", borderRadius: "3px", overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${(value / max) * 100}%`, background: color, borderRadius: "3px" }} />
-      </div>
-      <span style={{ fontFamily: "monospace", fontSize: "12px", fontWeight: 600, color: "#111", minWidth: "42px", textAlign: "right" }}>
-        {(value * 100).toFixed(1)}%
-      </span>
-    </div>
-  );
-}
-
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#aaa", marginBottom: "16px" }}>
@@ -136,13 +123,6 @@ function ConfCell({ val, rowTotal, ri, ci, maxVal }: {
   );
 }
 
-const CARD_METRIC_TIPS: Record<string, string> = {
-  "Season Accuracy": "Fraction of test images correctly classified as the right season (4 classes). Chance baseline is 25%.",
-  "F1 Macro": "Unweighted average F1 across all 4 seasons. Macro averaging treats each season equally regardless of sample count — important when classes are imbalanced.",
-  "Top-2 Accuracy": "Correct season appears in the model's top-2 predictions. High top-2 with lower top-1 means the model often narrows it to two adjacent seasons.",
-  "Autumn Recall": "Of all actual Autumn test images, what fraction the model correctly identified as Autumn. Low recall means many Autumn faces are misclassified. Autumn is the hardest class.",
-};
-
 const SEASON_TABLE_TIPS: Record<string, string> = {
   Precision: "Of all images predicted as this season, what fraction actually belongs to it. Low precision = too many false positives for this season.",
   Recall: "Of all actual images of this season, what fraction the model correctly identified. Low recall = the model frequently misses true examples.",
@@ -154,17 +134,6 @@ const BASELINE_TIPS: Record<string, string> = {
   "F1 Macro": "Macro-averaged F1 across 4 seasons. Unweighted — each season contributes equally regardless of class size.",
   "Top-2": "Correct season appears in the model's top-2 predictions. Reflects how often the right answer is at least considered.",
 };
-
-function MetricRow({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <div>
-      <div style={{ marginBottom: "4px" }}>
-        <TippedText tip={CARD_METRIC_TIPS[label] ?? ""}>{label}</TippedText>
-      </div>
-      <MetricBar value={value} color={color} />
-    </div>
-  );
-}
 
 function TrainingCurve() {
   const W = 560, H = 180;
@@ -184,7 +153,6 @@ function TrainingCurve() {
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto" }}>
-      {/* Y grid lines */}
       {[0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8].map(v => (
         <g key={v}>
           <line x1={PAD.left} y1={cy(v)} x2={W - PAD.right} y2={cy(v)} stroke="#f0f0f0" strokeWidth="1" />
@@ -193,7 +161,6 @@ function TrainingCurve() {
           </text>
         </g>
       ))}
-      {/* X axis */}
       <line x1={PAD.left} y1={H - PAD.bottom} x2={W - PAD.right} y2={H - PAD.bottom} stroke="#e8e8e8" strokeWidth="1" />
       {[1, 10, 20, 30, 40, 50].map(ep => {
         const i = ep - 1;
@@ -204,18 +171,13 @@ function TrainingCurve() {
           </g>
         );
       })}
-      {/* X axis label */}
       <text x={PAD.left + pw / 2} y={H - 2} textAnchor="middle" fill="#bbb" fontSize="9">Epoch</text>
-      {/* Train curve */}
       <polyline points={trainPts} fill="none" stroke="#d0d0d0" strokeWidth="1.5" strokeDasharray="4 2" />
-      {/* Val curve */}
       <polyline points={valPts} fill="none" stroke="#3A60D8" strokeWidth="2" />
-      {/* Best epoch marker */}
       <circle cx={cx(bestIdx)} cy={cy(FARL_VAL_ACC[bestIdx])} r="4" fill="#3A60D8" />
       <text x={cx(bestIdx) + 7} y={cy(FARL_VAL_ACC[bestIdx]) - 5} fill="#3A60D8" fontSize="9" fontWeight="600">
         Best epoch {bestIdx + 1} — {(FARL_VAL_ACC[bestIdx] * 100).toFixed(1)}%
       </text>
-      {/* Legend */}
       <line x1={W - 140} y1={PAD.top + 6} x2={W - 122} y2={PAD.top + 6} stroke="#d0d0d0" strokeWidth="1.5" strokeDasharray="4 2" />
       <text x={W - 118} y={PAD.top + 10} fill="#bbb" fontSize="9">Train acc</text>
       <line x1={W - 62} y1={PAD.top + 6} x2={W - 44} y2={PAD.top + 6} stroke="#3A60D8" strokeWidth="2" />
@@ -224,15 +186,11 @@ function TrainingCurve() {
   );
 }
 
-function ConfusionMatrix({ matrix, title }: {
-  matrix: number[][];
-  title: string;
-}) {
+function ConfusionMatrix({ matrix, title }: { matrix: number[][]; title: string }) {
   const maxVal = Math.max(...matrix.flat());
   return (
     <div>
       <SectionLabel>{title}</SectionLabel>
-      {/* Column headers */}
       <div style={{ display: "grid", gridTemplateColumns: "72px repeat(4, 1fr)", gap: "3px", marginBottom: "3px" }}>
         <div />
         {SEASONS.map(s => (
@@ -281,35 +239,6 @@ function PerformanceTab() {
           Deep learning (FaRL · CLIP ViT-B/16) vs classical computer vision (SVM · CIELab + HSV features) for
           personal color season classification on the Deep Armocromia dataset.
         </p>
-      </div>
-
-      {/* Overall metrics — hero cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "48px" }}>
-        {/* FaRL */}
-        <div style={{ border: "1.5px solid #3A60D8", borderRadius: "16px", padding: "24px" }}>
-          <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#3A60D8", marginBottom: "4px" }}>Model A</p>
-          <p style={{ fontSize: "20px", fontWeight: 900, color: "#111", margin: "0 0 2px 0" }}>FaRL</p>
-          <p style={{ fontSize: "12px", color: "#aaa", margin: "0 0 20px 0" }}>CLIP ViT-B/16 · Deep Learning · n=912</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            <MetricRow label="Season Accuracy" value={FARL.accuracy}       color={farlColor} />
-            <MetricRow label="F1 Macro"        value={FARL.f1_macro}       color={farlColor} />
-            <MetricRow label="Top-2 Accuracy"  value={FARL.top2_acc}       color={farlColor} />
-            <MetricRow label="Autumn Recall"   value={FARL.autumn_recall}  color={farlColor} />
-          </div>
-        </div>
-
-        {/* SVM */}
-        <div style={{ border: "1.5px solid #e0e0e0", borderRadius: "16px", padding: "24px" }}>
-          <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: svmColor, marginBottom: "4px" }}>Model B</p>
-          <p style={{ fontSize: "20px", fontWeight: 900, color: "#111", margin: "0 0 2px 0" }}>SVM</p>
-          <p style={{ fontSize: "12px", color: "#aaa", margin: "0 0 20px 0" }}>RBF kernel · CIELab + HSV · n=668</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            <MetricRow label="Season Accuracy" value={SVM.accuracy}      color={svmColor} />
-            <MetricRow label="F1 Macro"        value={SVM.f1_macro}      color={svmColor} />
-            <MetricRow label="Top-2 Accuracy"  value={SVM.top2_acc}      color={svmColor} />
-            <MetricRow label="Autumn Recall"   value={SVM.autumn_recall} color={svmColor} />
-          </div>
-        </div>
       </div>
 
       {/* Per-season breakdown */}
@@ -411,7 +340,6 @@ function PerformanceTab() {
                   <td style={{ padding: "11px 16px", textAlign: "right", fontFamily: "monospace", color: "#555" }}>{(row.top2 * 100).toFixed(1)}%</td>
                 </tr>
               ))}
-              {/* Divider */}
               <tr style={{ borderTop: "2px solid #e0e0e0" }}>
                 <td style={{ padding: "11px 16px", fontWeight: 700, color: "#111" }}>FaRL (Ours)</td>
                 <td style={{ padding: "11px 16px", fontSize: "11px", color: "#aaa" }}>This study</td>
