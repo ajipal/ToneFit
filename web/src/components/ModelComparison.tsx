@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { SUBTYPE_DISPLAY } from "@/lib/season-data";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -48,6 +49,82 @@ const FEATURE_META: Record<string, { label: string; desc: string; min: number; m
   V_mean: { label: "Value (Brightness)", desc: "0 = dark, 1 = bright",            min: 0,   max: 1   },
 };
 
+const SEASON_TIPS: Record<string, string> = {
+  autumn: "Probability assigned to Autumn. Higher = more golden, earthy, muted warmth detected. Autumn palettes suit warm, deep complexions with low contrast.",
+  spring: "Probability assigned to Spring. Higher = clear, bright warmth detected. Spring palettes suit light-to-medium warm complexions with fresh, vivid coloring.",
+  summer: "Probability assigned to Summer. Higher = cool, soft, muted tones detected. Summer palettes suit cool complexions with low contrast and ashy or rosy undertones.",
+  winter: "Probability assigned to Winter. Higher = cool, clear, high-contrast coloring detected. Winter palettes suit cool complexions with strong contrast between features.",
+};
+
+const FEATURE_TIPS: Record<string, string> = {
+  L_mean: "CIELab lightness (0–100). Lighter complexions (higher L*) lean Spring/Summer. Darker (lower L*) lean Autumn/Winter. The most direct measure of how light or dark the skin is.",
+  a_mean: "CIELab red-green axis. Positive = warm pinkish/reddish hue — a Spring or Autumn signal. Negative = cool greenish hue — a Summer or Winter signal.",
+  b_mean: "CIELab yellow-blue axis. Positive = warm golden/yellow cast — strong Autumn or Spring indicator. Negative = cool bluish cast — Winter or Summer indicator.",
+  ITA:    "Individual Typology Angle — a combined undertone score derived from L* and b*. Above 0 = warm/light (Spring/Summer likely). Below 0 = cool/dark (Autumn/Winter likely). One of the strongest predictors in this model.",
+  H_mean: "Dominant hue angle on the color wheel (0–360°). Skin sits in the 0–50° range. Closer to orange/yellow (higher) = warmer undertone. Closer to red (lower) = more neutral or cool-warm.",
+  S_mean: "HSV saturation — how vivid the skin color is. Low = desaturated/neutral (Summer/Winter signal). Higher = vivid color intensity (Spring/Autumn signal).",
+  V_mean: "HSV brightness — how much light is reflected. High brightness + warm hue = Spring. High brightness + cool = Summer. Low + warm = Autumn. Low + cool = Winter.",
+};
+
+const STAT_TIPS: Record<string, string> = {
+  warm:    "Combined probability for warm seasons (Autumn + Spring). Above 50% means the model reads warm undertones — golden, peachy, or earthy tones in your complexion.",
+  cool:    "Combined probability for cool seasons (Summer + Winter). Above 50% means the model reads cool undertones — ashy, rosy, or icy tones.",
+  margin:  "Gap between the 1st and 2nd ranked seasons. >30% = decisive prediction. 15–30% = moderate confidence. <15% = close call — you may sit between two seasons.",
+  cert:    "How concentrated probability is on one season. Derived from entropy (lower entropy = higher certainty). Low values mean the model is unsure and spread across multiple seasons.",
+  entropy: "Information-theoretic uncertainty. 0 bits = completely certain. 2.0 bits = maximum uncertainty (random guess across 4 seasons). Lower is more confident.",
+};
+
+const TABLE_ROW_TIPS: Record<string, string> = {
+  "Predicted season":     "The season label each model ultimately assigned to your photo.",
+  "Season confidence":    "Probability the model places on its top prediction. 25% = random guess. 100% = completely certain. Above 50% is a strong signal.",
+  "Warm bias":            "Both models' combined probability for warm seasons (Autumn + Spring). Compare to see if both models agree on temperature.",
+  "Cool bias":            "Both models' combined probability for cool seasons (Summer + Winter). High cool bias means both models lean toward ashy/icy undertones.",
+  "Confidence margin":    "Difference between top-1 and top-2 season probabilities. Higher = more decisive. Low margin means you are a close call between two seasons.",
+  "Prediction certainty": "Derived from entropy. Higher = model is more confident. Lower = probability is spread across seasons and the prediction is less reliable.",
+  "Entropy (bits)":       "Uncertainty measure (Shannon entropy over 4 seasons). 0 = certain, 2.0 = maximum uncertainty. Lower is better for prediction reliability.",
+};
+
+// ── Tooltip bubble ─────────────────────────────────────────────────────────────
+
+export function TipBubble({ text, anchorRect }: { text: string; anchorRect: DOMRect }) {
+  const left = anchorRect.left + anchorRect.width / 2;
+  const top  = anchorRect.top - 8;
+  return (
+    <div style={{
+      position: "fixed",
+      left: `${left}px`,
+      top: `${top}px`,
+      transform: "translate(-50%, -100%)",
+      background: "#111",
+      color: "#fff",
+      padding: "8px 12px",
+      borderRadius: "8px",
+      fontSize: "12px",
+      lineHeight: "17px",
+      maxWidth: "240px",
+      width: "max-content",
+      whiteSpace: "normal",
+      zIndex: 9999,
+      pointerEvents: "none",
+      boxShadow: "0 4px 14px rgba(0,0,0,0.18)",
+      textTransform: "none",
+      letterSpacing: "normal",
+      fontWeight: 400,
+    }}>
+      {text}
+      <div style={{
+        position: "absolute",
+        top: "100%",
+        left: "50%",
+        transform: "translateX(-50%)",
+        borderWidth: "5px",
+        borderStyle: "solid",
+        borderColor: "#111 transparent transparent transparent",
+      }} />
+    </div>
+  );
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 export function deriveStats(probs: Record<string, number>) {
@@ -72,11 +149,18 @@ export function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function StatRow({ label, value, bar, color, note }: {
-  label: string; value: string; bar?: number; color?: string; note?: string;
+export function StatRow({ label, value, bar, color, note, tooltip }: {
+  label: string; value: string; bar?: number; color?: string; note?: string; tooltip?: string;
 }) {
+  const [rect, setRect] = useState<DOMRect | null>(null);
   return (
-    <div className="flex flex-col gap-1">
+    <div
+      className="flex flex-col gap-1"
+      style={{ cursor: tooltip ? "help" : "default" }}
+      onMouseEnter={(e) => tooltip && setRect(e.currentTarget.getBoundingClientRect())}
+      onMouseLeave={() => setRect(null)}
+    >
+      {rect && tooltip && <TipBubble text={tooltip} anchorRect={rect} />}
       <div className="flex justify-between items-center">
         <span className="text-xs text-neutral-500">{label}</span>
         <span className="text-xs font-mono font-semibold text-black">{value}</span>
@@ -91,11 +175,18 @@ export function StatRow({ label, value, bar, color, note }: {
   );
 }
 
-export function ConfBar({ label, value, color, highlight }: {
-  label: string; value: number; color: string; highlight: boolean;
+export function ConfBar({ label, value, color, highlight, tooltip }: {
+  label: string; value: number; color: string; highlight: boolean; tooltip?: string;
 }) {
+  const [rect, setRect] = useState<DOMRect | null>(null);
   return (
-    <div className={`flex flex-col gap-1 ${highlight ? "" : "opacity-40"}`}>
+    <div
+      className={`flex flex-col gap-1 ${highlight ? "" : "opacity-40"}`}
+      style={{ cursor: tooltip ? "help" : "default" }}
+      onMouseEnter={(e) => tooltip && setRect(e.currentTarget.getBoundingClientRect())}
+      onMouseLeave={() => setRect(null)}
+    >
+      {rect && tooltip && <TipBubble text={tooltip} anchorRect={rect} />}
       <div className="flex justify-between text-xs">
         <span className={`capitalize font-medium ${highlight ? "text-black" : "text-neutral-500"}`}>{label}</span>
         <span className="font-mono text-neutral-500">{(value * 100).toFixed(1)}%</span>
@@ -114,8 +205,16 @@ export function FeatureGauge({ name, value }: { name: string; value: number }) {
   const clamped = Math.max(0, Math.min(1, pct));
   const isWarm = meta.warm && value > 0;
   const isCool = meta.warm && value < 0;
+  const tip = FEATURE_TIPS[name];
+  const [rect, setRect] = useState<DOMRect | null>(null);
   return (
-    <div className="flex flex-col gap-1">
+    <div
+      className="flex flex-col gap-1"
+      style={{ cursor: "help" }}
+      onMouseEnter={(e) => tip && setRect(e.currentTarget.getBoundingClientRect())}
+      onMouseLeave={() => setRect(null)}
+    >
+      {rect && tip && <TipBubble text={tip} anchorRect={rect} />}
       <div className="flex justify-between items-center">
         <span className="text-xs text-neutral-600 font-medium">{meta.label}</span>
         <span className="text-xs font-mono text-black font-semibold">{value}</span>
@@ -169,20 +268,38 @@ export function ModelCard({ title, subtitle, model, accent }: {
       <div className="flex flex-col gap-2">
         <SectionTitle>Season Confidence</SectionTitle>
         {SEASONS.map((s) => (
-          <ConfBar key={s} label={s} value={model.season_probs?.[s] ?? 0}
-            color={SEASON_COLORS[s] ?? "#888"} highlight={s === topSeason} />
+          <ConfBar
+            key={s}
+            label={s}
+            value={model.season_probs?.[s] ?? 0}
+            color={SEASON_COLORS[s] ?? "#888"}
+            highlight={s === topSeason}
+            tooltip={SEASON_TIPS[s]}
+          />
         ))}
       </div>
 
       {stats && (
         <div className="flex flex-col gap-3 rounded-xl bg-neutral-50 p-4">
           <SectionTitle>Prediction Analysis</SectionTitle>
-          <StatRow label="Warm bias (Autumn + Spring)" value={`${(stats.warm * 100).toFixed(1)}%`} bar={stats.warm} color="#B84020" />
-          <StatRow label="Cool bias (Summer + Winter)" value={`${(stats.cool * 100).toFixed(1)}%`} bar={stats.cool} color="#3A60D8" />
-          <StatRow label="Confidence margin (1st − 2nd)" value={`${(stats.margin * 100).toFixed(1)}%`} bar={stats.margin} color={color}
-            note={stats.margin > 0.3 ? "Decisive prediction" : stats.margin > 0.15 ? "Moderate confidence" : "Low confidence — close call"} />
-          <StatRow label="Prediction certainty" value={`${(stats.certainty * 100).toFixed(1)}%`} bar={stats.certainty} color={color}
-            note={`Entropy: ${stats.entropy.toFixed(3)} bits (max 2.0)`} />
+          <StatRow
+            label="Warm bias (Autumn + Spring)" value={`${(stats.warm * 100).toFixed(1)}%`}
+            bar={stats.warm} color="#B84020" tooltip={STAT_TIPS.warm}
+          />
+          <StatRow
+            label="Cool bias (Summer + Winter)" value={`${(stats.cool * 100).toFixed(1)}%`}
+            bar={stats.cool} color="#3A60D8" tooltip={STAT_TIPS.cool}
+          />
+          <StatRow
+            label="Confidence margin (1st − 2nd)" value={`${(stats.margin * 100).toFixed(1)}%`}
+            bar={stats.margin} color={color} tooltip={STAT_TIPS.margin}
+            note={stats.margin > 0.3 ? "Decisive prediction" : stats.margin > 0.15 ? "Moderate confidence" : "Low confidence — close call"}
+          />
+          <StatRow
+            label="Prediction certainty" value={`${(stats.certainty * 100).toFixed(1)}%`}
+            bar={stats.certainty} color={color} tooltip={STAT_TIPS.cert}
+            note={`Entropy: ${stats.entropy.toFixed(3)} bits (max 2.0)`}
+          />
         </div>
       )}
 
@@ -266,19 +383,37 @@ export function ComparisonTable({ farl, svm }: { farl: ModelResult; svm: ModelRe
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.label} className="border-b border-black/5 last:border-0">
-              <td className="px-6 py-3 text-neutral-500 text-xs">{row.label}</td>
-              <td className="px-6 py-3 font-mono font-semibold text-black capitalize">{row.farl}</td>
-              <td className="px-6 py-3 font-mono font-semibold text-black capitalize">{row.svm}</td>
-              <td className="px-6 py-3 text-center">
-                {row.compare !== null && (
-                  <span className={row.compare ? "text-green-500" : "text-amber-500"}>{row.compare ? "✓" : "≠"}</span>
-                )}
-              </td>
-            </tr>
+            <TableRow key={row.label} row={row} />
           ))}
         </tbody>
       </table>
     </div>
+  );
+}
+
+function TableRow({ row }: {
+  row: { label: string; farl: string; svm: string; compare: boolean | null };
+}) {
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const tip = TABLE_ROW_TIPS[row.label];
+  return (
+    <tr className="border-b border-black/5 last:border-0">
+      <td
+        className="px-6 py-3 text-neutral-500 text-xs"
+        style={{ cursor: tip ? "help" : "default" }}
+        onMouseEnter={(e) => tip && setRect(e.currentTarget.getBoundingClientRect())}
+        onMouseLeave={() => setRect(null)}
+      >
+        {rect && tip && <TipBubble text={tip} anchorRect={rect} />}
+        <span className={tip ? "border-b border-dashed border-neutral-300" : ""}>{row.label}</span>
+      </td>
+      <td className="px-6 py-3 font-mono font-semibold text-black capitalize">{row.farl}</td>
+      <td className="px-6 py-3 font-mono font-semibold text-black capitalize">{row.svm}</td>
+      <td className="px-6 py-3 text-center">
+        {row.compare !== null && (
+          <span className={row.compare ? "text-green-500" : "text-amber-500"}>{row.compare ? "✓" : "≠"}</span>
+        )}
+      </td>
+    </tr>
   );
 }
