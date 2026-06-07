@@ -1,0 +1,26 @@
+{
+  "model": "SVM (RBF)",
+  "best_params": {
+    "C": 100,
+    "gamma": "scale"
+  },
+  "best_cv_f1": 0.434175,
+  "accuracy": 0.456587,
+  "precision": 0.450978,
+  "recall": 0.456587,
+  "f1": 0.450737,
+  "top2_accuracy": 0.73503,
+  "autumn_recall": 0.530864,
+  "train_time_sec": 71.57,
+  "features": [
+    "L_mean",
+    "a_mean",
+    "b_mean",
+    "ITA",
+    "H_mean",
+    "S_mean",
+    "V_mean"
+  ],
+  "n_train": 3051,
+  "n_test": 668
+}

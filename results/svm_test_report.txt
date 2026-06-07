@@ -1,0 +1,30 @@
+ToneFit — SVM Color Feature Classifier — Test Report
+============================================================
+Kernel      : RBF
+Best params : {'C': 100, 'gamma': 'scale'}
+Features    : ['L_mean', 'a_mean', 'b_mean', 'ITA', 'H_mean', 'S_mean', 'V_mean']
+Train time  : 71.6s
+============================================================
+
+Classification Report:
+              precision    recall  f1-score   support
+
+      autumn     0.4503    0.5309    0.4873       162
+      spring     0.3926    0.2928    0.3354       181
+      summer     0.4477    0.4529    0.4503       170
+      winter     0.5235    0.5742    0.5477       155
+
+    accuracy                         0.4566       668
+   macro avg     0.4535    0.4627    0.4552       668
+weighted avg     0.4510    0.4566    0.4507       668
+
+Confusion Matrix (rows=actual, cols=predicted):
+               autumn    spring    summer    winter
+autumn             86        27        21        28
+spring             49        53        54        25
+summer             24        41        77        28
+winter             32        14        20        89
+
+Autumn recall  : 0.5309
+Top-2 accuracy : 0.7350
+Training time  : 71.6s

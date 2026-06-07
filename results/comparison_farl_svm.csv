@@ -1,0 +1,6 @@
+Model,Source,Accuracy,F1,Top-2,Autumn Recall
+FaRL16,Stacchio et al. (2024),0.525,0.516,0.815,-
+FaRL64,Stacchio et al. (2024),0.554,0.548,0.808,-
+ResNeXt50,Stacchio et al. (2024),0.513,0.502,0.789,-
+FaRL (Ours - FaRL),This study,0.5636,0.5546,0.8377,0.4363
+SVM RBF - Color Features (Ours),This study,0.4566,0.4507,0.735,0.5309
