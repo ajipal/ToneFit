@@ -5,8 +5,8 @@
 *.h5
 
 # Training outputs
-results/
-evaluation/
+/results/
+/evaluation/
 __pycache__/
 *.pyc
 *.pyo

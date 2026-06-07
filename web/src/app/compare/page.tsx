@@ -78,18 +78,18 @@ export default function ComparePage() {
       {/* ── Pre-result: centered hero ────────────────────────────────────── */}
       {!result && (
         <div
-          className="flex flex-col items-center justify-center text-center"
-          style={{ height: "calc(100vh - 88px)", paddingTop: "88px" }}
+          className="flex flex-col items-center justify-center text-center px-5 md:px-0"
+          style={{ minHeight: "calc(100vh - 88px)", paddingTop: "88px", paddingBottom: "40px" }}
         >
           <p className="text-xs font-bold tracking-widest uppercase text-neutral-400 mb-3">Model Comparison</p>
-          <h1 className="text-[48px] font-black leading-tight tracking-tight mb-3">FaRL vs SVM</h1>
-          <p className="text-base text-neutral-500 mb-10 max-w-md">
+          <h1 className="text-[32px] md:text-[48px] font-black leading-tight tracking-tight mb-3">FaRL vs SVM</h1>
+          <p className="text-sm md:text-base text-neutral-500 mb-8 md:mb-10 max-w-md">
             Deep learning (FaRL · CLIP ViT-B/16) vs classical CV (SVM · CIELab + HSV).
             Upload a photo to compare both models side by side.
           </p>
 
           {/* Upload zone */}
-          <div className="flex flex-col gap-4 w-[380px]">
+          <div className="flex flex-col gap-4 w-full max-w-[380px]">
             {photoPreview ? (
               <div className="flex flex-col gap-4 items-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -160,7 +160,7 @@ export default function ComparePage() {
 
       {/* ── Post-result: full layout ─────────────────────────────────────── */}
       {result && (
-        <div className="px-14 py-10 max-w-7xl mx-auto flex flex-col gap-8" style={{ paddingTop: "108px" }}>
+        <div className="px-4 md:px-14 py-8 md:py-10 max-w-7xl mx-auto flex flex-col gap-6 md:gap-8" style={{ paddingTop: "108px" }}>
 
           {/* Top row — image + model cards */}
           <div className="flex gap-6 items-start">

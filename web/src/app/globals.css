@@ -98,3 +98,50 @@
   .season-autumn { background: #5c2d00; }
   .season-winter { background: #080e2a; }
 }
+
+/* ── Season card height ───────────────────────────────────────────────────── */
+.season-card {
+  height: 520px;
+  width: 165.8px;
+}
+@media (max-width: 1024px) {
+  .season-card { height: 320px; width: 140px; }
+}
+@media (max-width: 768px) {
+  .season-card { height: 200px; width: calc(25vw - 10px); min-width: 80px; max-width: 140px; }
+}
+
+/* ── Results page responsive ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .results-content-area {
+    height: auto !important;
+    overflow: visible !important;
+    padding: 20px 20px 40px !important;
+  }
+  .results-two-col {
+    flex-direction: column !important;
+    height: auto !important;
+    gap: 24px !important;
+  }
+  .results-hero-heading { font-size: 28px !important; line-height: 36px !important; }
+  .results-hero-subheading { font-size: 48px !important; line-height: 56px !important; }
+  .results-tab-bar {
+    overflow-x: auto !important;
+    justify-content: flex-start !important;
+    padding: 0 12px !important;
+  }
+  .results-tab-bar button {
+    flex: none !important;
+    padding: 0 16px !important;
+    white-space: nowrap !important;
+    font-size: 13px !important;
+  }
+  .results-cards-col { overflow: visible !important; max-height: none !important; }
+  .results-section-heading { font-size: 30px !important; line-height: 36px !important; }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .results-content-area { padding: 24px 40px !important; }
+  .results-hero-heading { font-size: 44px !important; line-height: 52px !important; }
+  .results-hero-subheading { font-size: 60px !important; line-height: 68px !important; }
+}

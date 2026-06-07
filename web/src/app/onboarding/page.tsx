@@ -248,16 +248,16 @@ function OnboardingInner() {
 
       <div className="flex-1 flex flex-col">
         {/* Stepper */}
-        <div className="py-5 px-14 border-b border-black/8">
+        <div className="py-4 md:py-5 px-4 md:px-14 border-b border-black/8 overflow-x-auto">
           <ProgressStepper currentStep={step} completedSteps={completed} />
         </div>
 
         {/* Step content */}
-        <div className="flex-1 flex items-center justify-center p-8">
+        <div className="flex-1 flex items-center justify-center p-4 md:p-8">
           {/* ── Step 1: Name ───────────────────────────── */}
           {step === "name" && (
-            <div className="w-full max-w-xl flex flex-col items-center text-center gap-8">
-              <h1 className="text-[40px] font-black leading-tight tracking-tight">
+            <div className="w-full max-w-xl flex flex-col items-center text-center gap-6 md:gap-8">
+              <h1 className="text-[28px] md:text-[40px] font-black leading-tight tracking-tight">
                 What should we call you?
               </h1>
               <input
@@ -281,11 +281,11 @@ function OnboardingInner() {
 
           {/* ── Step 2: Style ──────────────────────────── */}
           {step === "style" && (
-            <div className="w-full max-w-2xl flex flex-col gap-8">
-              <h1 className="text-[40px] font-black leading-tight tracking-tight text-center">
+            <div className="w-full max-w-2xl flex flex-col gap-6 md:gap-8">
+              <h1 className="text-[28px] md:text-[40px] font-black leading-tight tracking-tight text-center">
                 What&apos;s your style?
               </h1>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 md:gap-4">
                 {STYLE_OPTIONS.map((opt) => {
                   const selected = style === opt.id;
                   return (
